@@ -1,15 +1,42 @@
 {
   "name": "CNR Ñuble – Supervisión de Obras",
   "short_name": "CNR Obras",
-  "description": "Sistema de supervisión de obras de riego – Ley N° 18450",
+  "description": "Sistema de supervisión y recepción de obras de riego – Ley N° 18450 – Región de Ñuble",
   "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
-  "orientation": "portrait-primary",
-  "background_color": "#003366",
-  "theme_color": "#003366",
-  "lang": "es",
+  "orientation": "any",
+  "background_color": "#2e3d5c",
+  "theme_color": "#2e3d5c",
+  "lang": "es-CL",
+  "categories": ["productivity", "utilities"],
   "icons": [
-    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Recepción de Obras",
+      "short_name": "Recepción",
+      "description": "Abrir módulo de recepción",
+      "url": "./index.html",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192" }]
+    }
   ]
 }
