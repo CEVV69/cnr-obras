@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="theme-color" content="#3a4a6b">
@@ -16,8 +16,44 @@
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;font-size:14px;background:#b8bec8}
 body{display:flex;justify-content:center}
-#app{width:75vw;max-width:980px;min-height:100vh;display:flex;flex-direction:column;background:#e8eaed;box-shadow:0 0 30px rgba(0,0,0,.35)}
-@media(max-width:860px){#app{width:100vw;max-width:100vw}}
+
+/* Desktop: 75vw centered */
+#app{
+  width:75vw;max-width:980px;min-height:100vh;
+  display:flex;flex-direction:column;
+  background:#e8eaed;
+  box-shadow:0 0 30px rgba(0,0,0,.35);
+  position:relative;
+}
+
+/* Tablet portrait (iPad 768px) and mobile: full screen */
+@media(max-width:1024px){
+  body{background:#e8eaed}
+  #app{
+    width:100vw;max-width:100vw;
+    min-height:100vh;min-height:100dvh; /* dynamic viewport height */
+    box-shadow:none;
+    /* Safe areas for notch/home indicator */
+    padding-bottom:env(safe-area-inset-bottom,0px);
+    padding-left:env(safe-area-inset-left,0px);
+    padding-right:env(safe-area-inset-right,0px);
+  }
+}
+
+/* Force full screen when installed as PWA (standalone mode) */
+@media(display-mode:standalone){
+  body{background:#e8eaed}
+  #app{
+    width:100vw;max-width:100vw;
+    min-height:100vh;min-height:100dvh;
+    box-shadow:none;
+    padding-top:env(safe-area-inset-top,0px);
+    padding-bottom:env(safe-area-inset-bottom,0px);
+    padding-left:env(safe-area-inset-left,0px);
+    padding-right:env(safe-area-inset-right,0px);
+  }
+  #hdr{padding-top:max(6px,env(safe-area-inset-top,6px))}
+}
 
 /* =====================================================
    HEADER
@@ -213,6 +249,7 @@ body{display:flex;justify-content:center}
   background:linear-gradient(180deg,#3d3d3d,#1a1a1a);
   flex-shrink:0;display:flex;align-items:center;
   justify-content:space-between;padding:6px 10px;min-height:48px;
+  padding-bottom:max(6px,env(safe-area-inset-bottom,6px));
 }
 .bn-arrow{width:36px;height:36px;background:linear-gradient(145deg,#555,#333);border:1px solid #666;border-radius:5px;color:#fff;font-size:18px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center}
 .bn-arrow:disabled{opacity:.35;cursor:default}
@@ -277,6 +314,63 @@ body{display:flex;justify-content:center}
 .sb-icon{font-size:20px;flex-shrink:0}
 .sb-title{font-size:13px;font-weight:700}
 .sb-sub{font-size:10px;opacity:.8;margin-top:1px}
+
+/* ── GEAR / ADMIN BUTTON — inside app flow, always visible ── */
+#gear-btn{
+  position:absolute;top:6px;right:6px;
+  width:32px;height:32px;
+  background:rgba(255,255,255,.18);
+  border:1px solid rgba(255,255,255,.3);
+  border-radius:6px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:16px;cursor:pointer;
+  z-index:200;
+  transition:background .15s;
+}
+#gear-btn:hover{background:rgba(255,255,255,.3)}
+
+/* ── ADMIN MODAL ── */
+#admin-modal{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;z-index:2000;padding:16px}
+#admin-modal.on{display:flex}
+.adm-box{background:#fff;border-radius:8px;width:100%;max-width:420px;box-shadow:0 8px 32px rgba(0,0,0,.3);overflow:hidden}
+.adm-hd{background:linear-gradient(90deg,#2e3d5c,#4a5878);color:#fff;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;font-size:13px;font-weight:700}
+.adm-body{padding:16px;display:flex;flex-direction:column;gap:14px}
+.adm-section{display:flex;flex-direction:column;gap:6px}
+.adm-label{font-size:11px;font-weight:700;color:#3a4a6b;text-transform:uppercase;letter-spacing:.4px}
+.adm-desc{font-size:12px;color:#667;line-height:1.5}
+.adm-xl-zone{
+  border:2px dashed #7a8aaa;border-radius:8px;
+  background:#f4f6fb;padding:14px 16px;
+  display:flex;align-items:center;gap:12px;cursor:pointer;
+  transition:border-color .15s;
+}
+.adm-xl-zone:hover{border-color:#2e3d5c}
+.adm-xl-zone.loaded{border-color:#2a8a3a;border-style:solid;background:#f0faf0}
+.adm-xl-icon{font-size:24px;flex-shrink:0}
+.adm-xl-title{font-size:13px;font-weight:700;color:#2e3d5c}
+.adm-xl-sub{font-size:11px;color:#888;margin-top:1px}
+.adm-divider{border:none;border-top:1px solid #e8eaed}
+.adm-status{font-size:11px;color:#2a6a3a;background:#e8f4e8;border-radius:4px;padding:6px 10px;line-height:1.5}
+.adm-status.empty{color:#8a5c00;background:#fef8e8}
+.adm-precarga-btn{
+  background:linear-gradient(145deg,#2e3d5c,#4a5878);
+  color:#fff;border:none;border-radius:6px;
+  padding:10px 14px;font-size:12px;font-weight:700;
+  cursor:pointer;display:flex;align-items:center;gap:6px;
+  transition:opacity .15s;
+}
+.adm-precarga-btn:hover{opacity:.88}
+.adm-precarga-btn:disabled{opacity:.45;cursor:default}
+
+/* Landscape on phone/small tablet: compact header */
+@media(max-height:500px) and (orientation:landscape){
+  #hdr{min-height:48px;padding:3px 8px}
+  #hdr .logo{width:38px;height:38px}
+  #hdr .htitle .t1{font-size:11px}
+  #hdr .htitle .t2{display:none}
+  #modbar .modtab{padding:4px 4px;font-size:10px}
+  #recbar{padding:2px 10px}
+}
 </style>
 </head>
 <body>
@@ -296,6 +390,7 @@ body{display:flex;justify-content:center}
       <div class="hico" onclick="doPDF(false)" title="Vista previa">📄</div>
       <div class="hico" onclick="doPDF(true)" title="Imprimir">🖨️</div>
       <div class="hico" onclick="save()" title="Guardar">💾</div>
+      <div class="hico" onclick="openAdmin()" title="Configuración" style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3)">⚙️</div>
     </div>
   </div>
 
@@ -324,16 +419,6 @@ body{display:flex;justify-content:center}
         <div class="portada-title">Sistema de Supervisión de Obras de Riego</div>
         <div class="portada-sub">CNR Ñuble · Ley N° 18450</div>
       </div>
-
-      <!-- Excel upload -->
-      <div class="xl-zone" id="xl-zone" onclick="document.getElementById('xlinp').click()">
-        <div class="xl-icon">📊</div>
-        <div class="xl-text">
-          <div class="xl-title">Cargar Excel de Proyectos</div>
-          <div class="xl-sub" id="xl-sub">Toque aquí para seleccionar el archivo</div>
-        </div>
-      </div>
-      <input type="file" id="xlinp" accept=".xlsx,.xls" style="display:none" onchange="loadExcel(event)">
 
       <!-- Module buttons -->
       <div class="mod-btns">
@@ -381,6 +466,9 @@ body{display:flex;justify-content:center}
         </button>
       </div>
       <input type="file" id="json-inp" accept=".json" style="display:none" onchange="importJSON(event)">
+      <div id="storage-info" style="font-size:11px;color:#667;text-align:center;width:100%;max-width:420px">
+        Cargando información de almacenamiento...
+      </div>
       <div class="portada-hint">
         <strong>Flujo PC → Tablet → PC:</strong><br>
         1. PC: prepare datos → <strong>Exportar datos</strong> → envíe el .json al tablet<br>
@@ -410,6 +498,54 @@ body{display:flex;justify-content:center}
   </div>
 
 </div><!-- #app -->
+
+<!-- ADMIN MODAL -->
+<div id="admin-modal" onclick="if(event.target===this)closeAdmin()">
+  <div class="adm-box">
+    <div class="adm-hd">
+      <span>⚙️ Administración</span>
+      <button class="mcl" onclick="closeAdmin()">✕</button>
+    </div>
+    <div class="adm-body">
+
+      <div class="adm-section">
+        <div class="adm-label">Excel de Proyectos</div>
+        <div class="adm-desc">Cargue el Excel con todos los proyectos. Queda guardado en este dispositivo y disponible para todos los módulos.</div>
+        <div class="adm-xl-zone" id="adm-xl-zone" onclick="document.getElementById('xlinp').click()">
+          <div class="adm-xl-icon">📊</div>
+          <div>
+            <div class="adm-xl-title">Cargar Excel de Proyectos</div>
+            <div class="adm-xl-sub" id="xl-sub">Toque para seleccionar el archivo</div>
+          </div>
+        </div>
+        <input type="file" id="xlinp" accept=".xlsx,.xls" style="display:none" onchange="loadExcel(event)">
+      </div>
+
+      <hr class="adm-divider">
+
+      <div class="adm-section">
+        <div class="adm-label">Estado del sistema</div>
+        <div class="adm-status" id="adm-status">Cargando...</div>
+      </div>
+
+      <hr class="adm-divider">
+
+      <div class="adm-section">
+        <div class="adm-label">Precarga para todos los usuarios</div>
+        <div class="adm-desc">
+          Si publica la app en GitHub Pages, puede incluir el Excel directamente en el repositorio como archivo <strong>proyectos.json</strong>. Los supervisores que abran la app por primera vez lo descargarán automáticamente sin necesidad de cargar el Excel.
+        </div>
+        <button class="adm-precarga-btn" id="btn-generar-json" onclick="generarProyectosJSON()" disabled>
+          📦 Generar proyectos.json para GitHub
+        </button>
+        <div class="adm-desc" style="color:#888;font-size:11px">
+          Descargue este archivo y súbalo a su repositorio de GitHub junto con index.html. Los usuarios nuevos lo cargarán automáticamente.
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
 
 <!-- INFO MODAL -->
 <div class="mbg" id="info-modal" onclick="if(event.target===this)closeInfo()">
@@ -453,11 +589,61 @@ const ML={inicio:'Inicio de Obras',visita:'Visita de Supervisión',recepcion:'Re
 
 let S={allProjects:[],openCodes:[],ci:0,mod:'recepcion',rec:{},inv:{},ph:{},files:{},sigs:{}};
 
-addEventListener('DOMContentLoaded',()=>{
-  try{const r=JSON.parse(localStorage.getItem(SK));if(r)S={...S,...r};}catch(e){}
+/* ── IndexedDB storage (replaces localStorage — 500MB+ capacity) ── */
+let DB=null;
+const DB_NAME='cnr_obras_db', DB_VER=1, DB_STORE='state';
+
+function openDB(){
+  return new Promise((res,rej)=>{
+    const req=indexedDB.open(DB_NAME,DB_VER);
+    req.onupgradeneeded=e=>{
+      const db=e.target.result;
+      if(!db.objectStoreNames.contains(DB_STORE))
+        db.createObjectStore(DB_STORE);
+    };
+    req.onsuccess=e=>{DB=e.target.result;res(DB);};
+    req.onerror=e=>{rej(e);};
+  });
+}
+
+function persist(){
+  if(!DB){
+    // Fallback to localStorage if IDB not ready (rare edge case)
+    try{localStorage.setItem(SK,JSON.stringify(S));}catch(e){}
+    return;
+  }
+  const tx=DB.transaction(DB_STORE,'readwrite');
+  tx.objectStore(DB_STORE).put(JSON.stringify(S),'main');
+  tx.onerror=()=>toast('⚠️ Error al guardar');
+}
+
+function loadFromDB(){
+  return new Promise(res=>{
+    if(!DB){res();return;}
+    const tx=DB.transaction(DB_STORE,'readonly');
+    const req=tx.objectStore(DB_STORE).get('main');
+    req.onsuccess=e=>{
+      try{
+        const r=JSON.parse(e.target.result||'null');
+        if(r)S={...S,...r};
+        // Migrate old localStorage data if IDB is empty but localStorage has data
+        if(!r){
+          const old=localStorage.getItem(SK);
+          if(old){S={...S,...JSON.parse(old)};persist();localStorage.removeItem(SK);}
+        }
+      }catch(ex){}
+      res();
+    };
+    req.onerror=()=>res();
+  });
+}
+
+addEventListener('DOMContentLoaded',async ()=>{
+  try{await openDB();}catch(e){console.warn('IDB unavailable, falling back to localStorage');}
+  await loadFromDB();
   restoreUI();
+  await fetchProyectosRemoto();
 });
-function persist(){try{localStorage.setItem(SK,JSON.stringify(S));}catch(e){toast('⚠️ Almacenamiento lleno');}}
 
 function restoreUI(){
   if(S.allProjects.length){
@@ -467,6 +653,23 @@ function restoreUI(){
   }
   if(S.openCodes.length) renderCurrent();
   else showPortada();
+  updateStorageInfo();
+}
+
+function updateStorageInfo(){
+  const el=document.getElementById('storage-info');
+  if(!el)return;
+  // Estimate current data size
+  try{
+    const json=JSON.stringify(S);
+    const kb=Math.round(json.length*0.75/1024);
+    const mb=(kb/1024).toFixed(1);
+    const photoCount=Object.values(S.ph).reduce((a,arr)=>a+(arr?.length||0),0);
+    el.textContent=`Almacenado: ${mb} MB · ${photoCount} fotos · IndexedDB (capacidad ~500 MB)`;
+    el.style.color=kb>400000?'#c0392b':kb>200000?'#b86800':'#2a6a3a';
+  }catch(e){el.textContent='';}
+  // Refresh admin panel if open
+  if(document.getElementById('admin-modal').classList.contains('on')) updateAdmStatus();
 }
 
 /* ── PORTADA ──────────────────────────────────────── */
@@ -761,11 +964,50 @@ function bFotos(p,isT,m){
 }
 
 function addPh(pk,max,cols,m){document.getElementById('phi-'+m).click();}
+function compressPhoto(file,cb){
+  // Resize to max 1200px wide, JPEG 75% quality → ~300KB from 6MB original
+  const img=new Image();
+  const url=URL.createObjectURL(file);
+  img.onload=()=>{
+    const MAX=1200;
+    let w=img.width,h=img.height;
+    if(w>MAX){h=Math.round(h*MAX/w);w=MAX;}
+    const cv=document.createElement('canvas');
+    cv.width=w;cv.height=h;
+    cv.getContext('2d').drawImage(img,0,0,w,h);
+    URL.revokeObjectURL(url);
+    cb(cv.toDataURL('image/jpeg',0.75));
+  };
+  img.onerror=()=>{
+    // fallback: read original without compression
+    const fr=new FileReader();
+    fr.onload=e=>cb(e.target.result);
+    fr.readAsDataURL(file);
+  };
+  img.src=url;
+}
+
 function handlePh(ev,pk,max,cols,m){
   const phs=S.ph[pk]||[];
-  Array.from(ev.target.files).slice(0,max-phs.length).forEach(f=>{
-    const fr=new FileReader();fr.onload=e=>{phs.push(e.target.result);S.ph[pk]=phs;refreshPG(pk,cols,max,m);persist();};fr.readAsDataURL(f);
-  });ev.target.value='';
+  const files=Array.from(ev.target.files);
+  let pending=files.length;
+  if(!pending){return;}
+  toast('📷 Procesando fotos...',8000);
+  files.forEach(f=>{
+    compressPhoto(f, compressed=>{
+      phs.push(compressed);
+      S.ph[pk]=phs;
+      pending--;
+      if(pending===0){
+        refreshPG(pk,cols,max,m);
+        persist();
+        // Show size estimate
+        const kb=Math.round(compressed.length*0.75/1024);
+        toast(`✅ Foto guardada (~${kb} KB)`);
+      }
+    });
+  });
+  ev.target.value='';
 }
 function delPh(pk,i,cols,m){const phs=S.ph[pk]||[];phs.splice(i,1);S.ph[pk]=phs;refreshPG(pk,cols,cols===3?12:8,m);persist();}
 function delLastPh(pk,cols,m,max){const phs=S.ph[pk]||[];if(!phs.length)return;phs.pop();S.ph[pk]=phs;refreshPG(pk,cols,max,m);persist();}
@@ -1391,6 +1633,7 @@ function importJSON(event){
 
       persist();
       restoreUI();
+      updateStorageInfo();
       toast(`✅ Datos importados correctamente desde "${file.name}"`, 4000);
 
       // Update Excel status display
@@ -1405,6 +1648,93 @@ function importJSON(event){
   };
   fr.readAsText(file);
   event.target.value = ''; // allow re-importing same file
+}
+
+
+/* ── ADMIN MODAL ─────────────────────────────────── */
+function openAdmin(){
+  updateAdmStatus();
+  document.getElementById('admin-modal').classList.add('on');
+}
+function closeAdmin(){document.getElementById('admin-modal').classList.remove('on');}
+
+function updateAdmStatus(){
+  const el=document.getElementById('adm-status');
+  const btn=document.getElementById('btn-generar-json');
+  if(!el)return;
+  const n=S.allProjects.length;
+  const phCount=Object.values(S.ph).reduce((a,arr)=>a+(arr?.length||0),0);
+  try{
+    const kb=Math.round(JSON.stringify(S).length*0.75/1024);
+    const mb=(kb/1024).toFixed(1);
+    if(n>0){
+      el.className='adm-status';
+      el.innerHTML=`✅ <strong>${n} proyectos</strong> cargados · ${phCount} fotos · ${mb} MB usados<br>
+        <span style="font-size:10px;color:#555">Almacenamiento: IndexedDB (~500 MB disponibles)</span>`;
+      if(btn)btn.disabled=false;
+    } else {
+      el.className='adm-status empty';
+      el.innerHTML='⚠️ Sin proyectos cargados. Cargue el Excel de proyectos.';
+      if(btn)btn.disabled=true;
+    }
+  }catch(e){el.textContent='—';}
+  // Update xl-zone style
+  const zone=document.getElementById('adm-xl-zone');
+  const sub=document.getElementById('xl-sub');
+  if(zone&&sub){
+    if(n>0){
+      zone.classList.add('loaded');
+      sub.textContent=`✅ ${n} proyectos cargados`;
+    } else {
+      zone.classList.remove('loaded');
+      sub.textContent='Toque para seleccionar el archivo';
+    }
+  }
+}
+
+/* ── GENERATE proyectos.json FOR GITHUB ── */
+function generarProyectosJSON(){
+  if(!S.allProjects.length){toast('Sin proyectos para exportar');return;}
+  const payload={
+    version:1,
+    generated: new Date().toISOString(),
+    note:'Generado por CNR Ñuble PWA. Subir a GitHub junto con index.html.',
+    projects: S.allProjects
+  };
+  const json=JSON.stringify(payload,null,2);
+  const blob=new Blob([json],{type:'application/json;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download='proyectos.json';
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url),2000);
+  toast('📦 proyectos.json descargado — súbalo a GitHub',4000);
+}
+
+/* ── AUTO-FETCH proyectos.json FROM GITHUB (first run) ── */
+async function fetchProyectosRemoto(){
+  // Only fetch if user has no projects and app is served from http/https
+  if(S.allProjects.length>0) return;
+  if(!location.protocol.startsWith('http')) return;
+  try{
+    const res=await fetch('./proyectos.json',{cache:'no-cache'});
+    if(!res.ok) return; // file doesn't exist yet, that's fine
+    const data=await res.json();
+    if(data.projects&&data.projects.length>0){
+      S.allProjects=data.projects;
+      persist();
+      // Update UI
+      const sub=document.getElementById('xl-sub');
+      const zone=document.getElementById('adm-xl-zone');
+      if(sub) sub.textContent=`✅ ${data.projects.length} proyectos (descargados automáticamente)`;
+      if(zone) zone.classList.add('loaded');
+      updateStorageInfo();
+      toast(`✅ ${data.projects.length} proyectos cargados automáticamente`,3000);
+    }
+  }catch(e){
+    // Silently ignore — file may not exist yet
+  }
 }
 
 /* ── UTILS ───────────────────────────────────────── */
