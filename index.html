@@ -262,6 +262,21 @@ body{display:flex;justify-content:center}
 #loading p{color:#fff;font-size:13px;font-weight:600}
 
 @media print{#hdr .hicons,#bottomnav,#srch-modal,#loading,#recbar{display:none!important}#app{box-shadow:none;width:100%;max-width:100%}#main{overflow:visible}}
+
+/* ── SYNC BUTTONS ── */
+.sync-row{display:flex;gap:10px;width:100%;max-width:420px}
+.sync-btn{
+  flex:1;display:flex;align-items:center;gap:10px;
+  padding:12px 14px;border:none;border-radius:8px;cursor:pointer;
+  text-align:left;transition:all .15s;
+}
+.sync-btn.export{background:linear-gradient(145deg,#2a6a3a,#1a5030);color:#fff}
+.sync-btn.import{background:linear-gradient(145deg,#2a4a7a,#1a3560);color:#fff}
+.sync-btn:hover{transform:translateY(-1px);opacity:.92}
+.sync-btn:active{transform:translateY(0);opacity:.85}
+.sb-icon{font-size:20px;flex-shrink:0}
+.sb-title{font-size:13px;font-weight:700}
+.sb-sub{font-size:10px;opacity:.8;margin-top:1px}
 </style>
 </head>
 <body>
@@ -348,9 +363,30 @@ body{display:flex;justify-content:center}
         </button>
       </div>
 
+      <!-- SYNC BUTTONS -->
+      <div class="sync-row">
+        <button class="sync-btn export" onclick="exportJSON()">
+          <span class="sb-icon">📤</span>
+          <span class="sb-text">
+            <div class="sb-title">Exportar datos</div>
+            <div class="sb-sub">Guardar todo para llevar al tablet</div>
+          </span>
+        </button>
+        <button class="sync-btn import" onclick="document.getElementById('json-inp').click()">
+          <span class="sb-icon">📥</span>
+          <span class="sb-text">
+            <div class="sb-title">Importar datos</div>
+            <div class="sb-sub">Cargar datos desde otro dispositivo</div>
+          </span>
+        </button>
+      </div>
+      <input type="file" id="json-inp" accept=".json" style="display:none" onchange="importJSON(event)">
       <div class="portada-hint">
-        Use ➕ en la barra inferior para abrir un proyecto.<br>
-        Navegue entre proyectos con ◀ ▶.
+        <strong>Flujo PC → Tablet → PC:</strong><br>
+        1. PC: prepare datos → <strong>Exportar datos</strong> → envíe el .json al tablet<br>
+        2. Tablet: <strong>Importar datos</strong> → tome fotos y complete → <strong>Exportar datos</strong><br>
+        3. PC: <strong>Importar datos</strong> → imprima o envíe el acta<br><br>
+        Use ➕ en la barra inferior para abrir un proyecto.
       </div>
     </div>
     <!-- ═══ END PORTADA ═══ -->
@@ -1288,6 +1324,87 @@ function doEmail(){
     window.open(`mailto:?subject=${subj}&body=${body}`);
   },600);
   toast('📥 Acta descargada. Adjúntela al correo.',4000);
+}
+
+
+/* ── EXPORTAR / IMPORTAR JSON (sincronización entre dispositivos) ── */
+function exportJSON(){
+  save(); // save any pending form data first
+  const payload={
+    version:2,
+    exported: new Date().toISOString(),
+    deviceNote:'Exportado desde CNR Ñuble PWA',
+    allProjects: S.allProjects,
+    openCodes:   S.openCodes,
+    ci:          S.ci,
+    mod:         S.mod,
+    rec:         S.rec,
+    inv:         S.inv,
+    ph:          S.ph,     // fotos incluidas (base64)
+    files:       S.files,  // archivos adjuntos
+    sigs:        S.sigs,   // firmas
+  };
+  const json = JSON.stringify(payload, null, 2);
+  const blob = new Blob([json], {type:'application/json;charset=utf-8'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  const ts   = new Date().toISOString().slice(0,10);
+  const cod  = S.openCodes[S.ci] || 'sinproyecto';
+  a.href     = url;
+  a.download = `CNR_datos_${cod}_${ts}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url), 2000);
+  toast('📤 Datos exportados — incluye fotos y formularios', 4000);
+}
+
+function importJSON(event){
+  const file = event.target.files[0];
+  if(!file) return;
+  if(!file.name.endsWith('.json')){toast('⚠️ Seleccione un archivo .json');return;}
+  const fr = new FileReader();
+  fr.onload = ev => {
+    try{
+      const payload = JSON.parse(ev.target.result);
+      if(!payload.version||!payload.allProjects){
+        toast('❌ Archivo JSON no válido o de otra aplicación');
+        return;
+      }
+      // Ask before overwriting
+      const existing = S.openCodes.length > 0;
+      const msg = existing
+        ? `¿Importar datos del archivo "${file.name}"?\n\nEsto REEMPLAZARÁ todos los datos actuales de este dispositivo.\n[OK] = Importar  [Cancelar] = Mantener actuales`
+        : `¿Importar datos del archivo "${file.name}"?`;
+      if(existing && !confirm(msg)) return;
+
+      // Merge strategy: import everything from the file
+      S.allProjects = payload.allProjects || S.allProjects;
+      S.openCodes   = payload.openCodes   || [];
+      S.ci          = payload.ci          || 0;
+      S.mod         = payload.mod         || 'recepcion';
+      S.rec         = payload.rec         || {};
+      S.inv         = payload.inv         || {};
+      S.ph          = payload.ph          || {};
+      S.files       = payload.files       || {};
+      S.sigs        = payload.sigs        || {};
+
+      persist();
+      restoreUI();
+      toast(`✅ Datos importados correctamente desde "${file.name}"`, 4000);
+
+      // Update Excel status display
+      if(S.allProjects.length){
+        document.getElementById('xl-zone').classList.add('loaded');
+        document.getElementById('xl-sub').textContent = `✅ ${S.allProjects.length} proyectos cargados`;
+      }
+    } catch(err){
+      console.error('Import error:', err);
+      toast('❌ Error al leer el archivo. Verifique que sea un JSON de CNR.');
+    }
+  };
+  fr.readAsText(file);
+  event.target.value = ''; // allow re-importing same file
 }
 
 /* ── UTILS ───────────────────────────────────────── */
