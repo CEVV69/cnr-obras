@@ -124,7 +124,6 @@ body{display:flex;justify-content:center}
 }
 .mod-btn:hover{background:linear-gradient(145deg,#5a6d90,#3a4d6c);transform:translateY(-1px)}
 .mod-btn:active{transform:translateY(0);opacity:.9}
-.mod-btn .mb-icon{font-size:22px}
 .mod-btn .mb-text{flex:1;text-align:left}
 .mod-btn .mb-title{font-size:14px;font-weight:700}
 .mod-btn .mb-sub{font-size:11px;opacity:.75;margin-top:2px}
@@ -142,7 +141,7 @@ body{display:flex;justify-content:center}
 .slabel{font-weight:700;font-size:13px;color:#1a2a3a;padding:8px 0 4px}
 
 /* Field rows — label : input */
-.frow{display:flex;align-items:center;min-height:28px;margin-bottom:3px}
+.frow{display:flex;align-items:center;min-height:32px;margin-bottom:6px}
 .frow .fl{font-weight:700;font-size:13px;color:#1a2a3a;min-width:150px;flex-shrink:0;padding-right:4px}
 .frow .fc{color:#333;margin-right:6px;flex-shrink:0}
 .frow .fi{flex:1;min-width:0}
@@ -152,7 +151,7 @@ body{display:flex;justify-content:center}
 .frow .fi textarea{resize:vertical;min-height:52px}
 
 /* Two-column rows */
-.frow2{display:flex;gap:8px;margin-bottom:3px}
+.frow2{display:flex;gap:8px;margin-bottom:6px}
 .frow2 .fcol{display:flex;align-items:center;flex:1;min-width:0}
 .frow2 .fcol .fl{font-weight:700;font-size:13px;color:#1a2a3a;flex-shrink:0;padding-right:4px}
 .frow2 .fcol .fc{color:#333;margin-right:6px;flex-shrink:0}
@@ -372,6 +371,15 @@ body{display:flex;justify-content:center}
   #modbar .modtab{padding:4px 4px;font-size:10px}
   #recbar{padding:2px 10px}
 }
+
+.adm-del-btn{
+  background:#fee2e2;color:#b91c1c;
+  border:1px solid #fca5a5;border-radius:6px;
+  padding:7px 12px;font-size:12px;font-weight:700;
+  cursor:pointer;width:100%;text-align:left;
+  transition:background .15s;
+}
+.adm-del-btn:hover{background:#fecaca}
 </style>
 </head>
 <body>
@@ -424,28 +432,25 @@ body{display:flex;justify-content:center}
       <!-- Module buttons -->
       <div class="mod-btns">
         <button class="mod-btn" id="btn-inicio" onclick="goMod('inicio')">
-          <span class="mb-icon">🏗️</span>
           <span class="mb-text">
             <div class="mb-title">Inicio de Obras</div>
             <div class="mb-sub">Acta de inicio, constructor, plazos y condiciones</div>
           </span>
-          <span>▶</span>
+          <span style="opacity:.6;font-size:13px">▶</span>
         </button>
         <button class="mod-btn" id="btn-visita" onclick="goMod('visita')">
-          <span class="mb-icon">👁️</span>
           <span class="mb-text">
             <div class="mb-title">Visita de Supervisión</div>
             <div class="mb-sub">Inspección intermedia, avance y conformidad</div>
           </span>
-          <span>▶</span>
+          <span style="opacity:.6;font-size:13px">▶</span>
         </button>
         <button class="mod-btn" id="btn-recepcion" onclick="goMod('recepcion')">
-          <span class="mb-icon">✅</span>
           <span class="mb-text">
             <div class="mb-title">Recepción de Obras</div>
             <div class="mb-sub">Acta de inventario, fotos y firma del supervisor</div>
           </span>
-          <span>▶</span>
+          <span style="opacity:.6;font-size:13px">▶</span>
         </button>
       </div>
 
@@ -511,15 +516,18 @@ body{display:flex;justify-content:center}
 
       <div class="adm-section">
         <div class="adm-label">Excel de Proyectos</div>
-        <div class="adm-desc">Cargue el Excel con todos los proyectos. Queda guardado en este dispositivo y disponible para todos los módulos.</div>
+        <div class="adm-desc">Cargue el Excel con todos los proyectos. Al cargar uno nuevo <strong>reemplaza automáticamente</strong> el anterior — no se superponen.</div>
         <div class="adm-xl-zone" id="adm-xl-zone" onclick="document.getElementById('xlinp').click()">
           <div class="adm-xl-icon">📊</div>
           <div>
-            <div class="adm-xl-title">Cargar Excel de Proyectos</div>
+            <div class="adm-xl-title">Cargar / Reemplazar Excel</div>
             <div class="adm-xl-sub" id="xl-sub">Toque para seleccionar el archivo</div>
           </div>
         </div>
         <input type="file" id="xlinp" accept=".xlsx,.xls" style="display:none" onchange="loadExcel(event)">
+        <button class="adm-del-btn" id="btn-del-excel" onclick="eliminarExcel()" style="display:none">
+          🗑️ Eliminar Excel cargado
+        </button>
       </div>
 
       <hr class="adm-divider">
@@ -702,6 +710,7 @@ function loadExcel(e){
     try{
       const wb=XLSX.read(new Uint8Array(ev.target.result),{type:'array'});
       S.allProjects=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''});
+      S.proyectosTS=''; // reset so GitHub version won't be blocked by old ts
       persist();hideL();
       document.getElementById('xl-zone').classList.add('loaded');
       document.getElementById('xl-sub').textContent=`✅ ${S.allProjects.length} proyectos cargados`;
@@ -1059,7 +1068,7 @@ function bRecepcion(p,isT,rec,rk){
 function bInicio(p,isT,rec,rk){
   return bIdent(p,isT,rec)
     +`<div class="slabel" style="margin-top:6px">DATOS DE INICIO DE OBRAS:</div>
-    <div class="frow"><span class="fl">Fecha inicio de obras</span><span class="fc">:</span><span class="fi" style="max-width:155px">${edt('_f_ini',rec)}</span></div>
+    <div class="frow"><span class="fl">Fecha inicio de obras</span><span class="fc">:</span><span class="fi" style="max-width:200px">${edt('_f_ini',rec)}</span></div>
     <div class="frow"><span class="fl">Plazo ejecución (días)</span><span class="fc">:</span><span class="fi" style="max-width:100px">${ei('_plazo','180',rec,'number')}</span></div>
     <div class="frow"><span class="fl">Constructor / Contratista</span><span class="fc">:</span><span class="fi">${ei('_constr','',rec)}</span></div>
     <div class="frow"><span class="fl">Profesional residente</span><span class="fc">:</span><span class="fi">${ei('_resid','',rec)}</span></div>
@@ -1074,7 +1083,7 @@ function bVisita(p,isT,rec,rk){
   const av=rec['_av']||0;
   return bIdent(p,isT,rec)
     +`<div class="slabel" style="margin-top:6px">VISITA DE SUPERVISIÓN INTERMEDIA:</div>
-    <div class="frow"><span class="fl">Fecha de visita</span><span class="fc">:</span><span class="fi" style="max-width:155px">${edt('_f_vis',rec)}</span></div>
+    <div class="frow"><span class="fl">Fecha de visita</span><span class="fc">:</span><span class="fi" style="max-width:200px">${edt('_f_vis',rec)}</span></div>
     <div class="frow"><span class="fl">% Avance estimado</span><span class="fc">:</span><span class="fi" style="display:flex;align-items:center;gap:8px"><input type="range" data-f="_av" min="0" max="100" step="5" value="${av}" oninput="document.getElementById('avl').textContent=this.value+'%'" style="flex:1"><strong id="avl" style="min-width:36px;color:#2e3d5c">${av}%</strong></span></div>
     <div class="frow"><span class="fl">Etapa constructiva</span><span class="fc">:</span><span class="fi">${ei('_etapa','',rec)}</span></div>
     <div class="frow"><span class="fl">Conformidad con proyecto</span><span class="fc">:</span><span class="fi" style="max-width:200px">${esel('_conf',rec,['— Seleccione —','Conforme','Con reparos','No conforme'])}</span></div>
@@ -1673,10 +1682,14 @@ function updateAdmStatus(){
       el.innerHTML=`✅ <strong>${n} proyectos</strong> cargados · ${phCount} fotos · ${mb} MB usados<br>
         <span style="font-size:10px;color:#555">Almacenamiento: IndexedDB (~500 MB disponibles)</span>`;
       if(btn)btn.disabled=false;
+      const delBtn=document.getElementById('btn-del-excel');
+      if(delBtn)delBtn.style.display='block';
     } else {
       el.className='adm-status empty';
       el.innerHTML='⚠️ Sin proyectos cargados. Cargue el Excel de proyectos.';
       if(btn)btn.disabled=true;
+      const delBtn2=document.getElementById('btn-del-excel');
+      if(delBtn2)delBtn2.style.display='none';
     }
   }catch(e){el.textContent='—';}
   // Update xl-zone style
@@ -1693,12 +1706,30 @@ function updateAdmStatus(){
   }
 }
 
+
+/* ── ELIMINAR EXCEL ── */
+function eliminarExcel(){
+  if(!S.allProjects.length){toast('No hay Excel cargado');return;}
+  if(!confirm(`¿Eliminar los ${S.allProjects.length} proyectos cargados?\n\nLos datos de formularios y fotos se conservan.\n[OK] = Eliminar`)) return;
+  S.allProjects=[];
+  S.openCodes=[];
+  S.ci=0;
+  persist();
+  updateAdmStatus();
+  updateStorageInfo();
+  showPortada();
+  toast('🗑️ Excel eliminado. Cargue uno nuevo.');
+}
+
 /* ── GENERATE proyectos.json FOR GITHUB ── */
 function generarProyectosJSON(){
   if(!S.allProjects.length){toast('Sin proyectos para exportar');return;}
+  const ts=new Date().toISOString();
+  S.proyectosTS=ts; // store local timestamp too
+  persist();
   const payload={
-    version:1,
-    generated: new Date().toISOString(),
+    version:2,
+    generated: ts,
     note:'Generado por CNR Ñuble PWA. Subir a GitHub junto con index.html.',
     projects: S.allProjects
   };
@@ -1713,28 +1744,56 @@ function generarProyectosJSON(){
   toast('📦 proyectos.json descargado — súbalo a GitHub',4000);
 }
 
-/* ── AUTO-FETCH proyectos.json FROM GITHUB (first run) ── */
+/* ── AUTO-SYNC proyectos.json FROM GITHUB ────────────────────
+   Strategy:
+   - Always fetch proyectos.json (with cache:no-cache)
+   - Compare 'generated' timestamp with locally stored one
+   - If remote is newer → update automatically + notify user
+   - If user has no projects at all → load silently
+   ─────────────────────────────────────────────────────────── */
 async function fetchProyectosRemoto(){
-  // Only fetch if user has no projects and app is served from http/https
-  if(S.allProjects.length>0) return;
   if(!location.protocol.startsWith('http')) return;
   try{
     const res=await fetch('./proyectos.json',{cache:'no-cache'});
-    if(!res.ok) return; // file doesn't exist yet, that's fine
+    if(!res.ok) return; // file doesn't exist yet in repo — that's fine
     const data=await res.json();
-    if(data.projects&&data.projects.length>0){
-      S.allProjects=data.projects;
+    if(!data.projects||!data.projects.length) return;
+
+    const remoteTS  = data.generated||'';
+    const localTS   = S.proyectosTS||'';
+    const hasLocal  = S.allProjects.length>0;
+    const isNewer   = !localTS||(remoteTS>localTS);
+
+    if(!hasLocal){
+      // First run: load silently
+      S.allProjects  = data.projects;
+      S.proyectosTS  = remoteTS;
       persist();
-      // Update UI
+      updateAdmStatus();
+      updateStorageInfo();
       const sub=document.getElementById('xl-sub');
       const zone=document.getElementById('adm-xl-zone');
-      if(sub) sub.textContent=`✅ ${data.projects.length} proyectos (descargados automáticamente)`;
+      if(sub) sub.textContent=`✅ ${data.projects.length} proyectos cargados`;
       if(zone) zone.classList.add('loaded');
-      updateStorageInfo();
       toast(`✅ ${data.projects.length} proyectos cargados automáticamente`,3000);
+
+    } else if(isNewer){
+      // Newer version available → auto-update without asking
+      const prev=S.allProjects.length;
+      S.allProjects  = data.projects;
+      S.proyectosTS  = remoteTS;
+      persist();
+      updateAdmStatus();
+      updateStorageInfo();
+      const sub=document.getElementById('xl-sub');
+      if(sub) sub.textContent=`✅ ${data.projects.length} proyectos cargados`;
+      if(data.projects.length!==prev){
+        toast(`🔄 Lista de proyectos actualizada: ${data.projects.length} proyectos`,4000);
+      }
     }
+    // If same version → do nothing (user's local Excel is current)
   }catch(e){
-    // Silently ignore — file may not exist yet
+    // Silently ignore network errors — app works offline
   }
 }
 
