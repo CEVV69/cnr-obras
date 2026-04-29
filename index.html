@@ -8,6 +8,31 @@
 <meta name="theme-color" content="#3a4a6b">
 <title>CNR Ñuble</title>
 <link rel="manifest" href="manifest.json">
+<script>
+// Register SW and detect updates
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js').then(reg => {
+    // Check for updates every time page loads
+    reg.update();
+    reg.addEventListener('updatefound', () => {
+      const newSW = reg.installing;
+      newSW.addEventListener('statechange', () => {
+        if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
+          // New version ready — tell it to activate immediately
+          newSW.postMessage('SKIP_WAITING');
+          // Reload to use new version
+          setTimeout(() => location.reload(), 500);
+        }
+      });
+    });
+  });
+  // When SW takes control (after update), reload once
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!refreshing) { refreshing = true; location.reload(); }
+  });
+}
+</script>
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
@@ -15,7 +40,7 @@
    BASE
 ===================================================== */
 *{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%;font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;font-size:15px;background:#b8bec8}
+html,body{height:100%;font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;font-size:15px;background:#b8bec8;overflow:hidden;word-break:break-word}
 body{display:flex;justify-content:center}
 
 /* Desktop: 75vw centered */
@@ -25,6 +50,7 @@ body{display:flex;justify-content:center}
   background:#e8eaed;
   box-shadow:0 0 30px rgba(0,0,0,.35);
   position:relative;
+  overflow:hidden;
 }
 
 /* Tablet portrait (iPad 768px) and mobile: full screen */
