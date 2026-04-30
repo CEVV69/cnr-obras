@@ -45,7 +45,7 @@ if ('serviceWorker' in navigator) {
 ===================================================== */
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;font-size:15px;background:#b8bec8;overflow:hidden;word-break:break-word}
-body{display:flex;justify-content:center}
+body{display:block}
 
 /* Desktop: 75vw centered */
 #app{
@@ -55,6 +55,7 @@ body{display:flex;justify-content:center}
   box-shadow:0 0 30px rgba(0,0,0,.35);
   position:relative;
   overflow:hidden;
+  margin:0 auto;
 }
 
 /* Tablet portrait (iPad 768px) and mobile: full screen */
@@ -532,8 +533,8 @@ body{display:flex;justify-content:center}
     <button class="bn-arrow" id="nav-next" onclick="navRec(1)" disabled>▶</button>
   </div>
 
-</div><!-- #app -->
 
+  <!-- OVERLAYS -->
 <!-- ADMIN MODAL -->
 <div id="admin-modal" onclick="if(event.target===this)closeAdmin()">
   <div class="adm-box">
@@ -1581,7 +1582,10 @@ function buildPDFHTML(p,m,rec,isT,items,photos,sig){
 
   ${photoGrid}
   ${sigBlock}
-  </div></body></html>`;
+  </div>
+</div><!-- #app -->
+
+</body></html>`;
 }
 
 function getPDFData(){
@@ -2497,6 +2501,6 @@ function td(){return new Date().toISOString().split('T')[0];}
 function toast(msg,ms=3000){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('on');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('on'),ms);}
 function showL(msg){document.getElementById('ltxt').textContent=msg;document.getElementById('loading').classList.add('on');}
 function hideL(){document.getElementById('loading').classList.remove('on');}
-</script>
+
 </body>
 </html>
