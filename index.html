@@ -1274,65 +1274,25 @@ function parsePrespuestoPDF(dataURL, fk){
 }
 
 function extractPDFText(bin){
-  // Strategy 1: Extract text from BT...ET blocks (uncompressed PDF text streams)
+  // Extract readable text sequences from PDF binary
   const lines=[];
-  const str=bin;
-
-  // Find all BT...ET blocks (PDF text blocks)
-  let i=0;
-  while(i<str.length-2){
-    // Look for BT marker
-    if(str[i]==='B'&&str[i+1]==='T'&&(i===0||str[i-1]==='
-'||str[i-1]===' ')){
-      const etIdx=str.indexOf('ET',i+2);
-      if(etIdx>0&&etIdx-i<50000){
-        const block=str.slice(i+2,etIdx);
-        // Extract text from Tj, TJ, ' operators
-        // Tj: (text)Tj  or <hex>Tj
-        const tjMatches=block.match(/\(([^)]+)\)\s*Tj/g)||[];
-        tjMatches.forEach(m=>{
-          const txt=m.replace(/\(([^)]+)\)\s*Tj/,'$1').trim();
-          if(txt.length>2) lines.push(txt);
-        });
-        // TJ: [(text) spacing (text)]TJ
-        const tjArrMatches=block.match(/\[([^\]]+)\]\s*TJ/g)||[];
-        tjArrMatches.forEach(m=>{
-          const parts=m.match(/\(([^)]*)\)/g)||[];
-          const txt=parts.map(p=>p.slice(1,-1)).join('').trim();
-          if(txt.length>2) lines.push(txt);
-        });
-        i=etIdx+2;
-        continue;
+  let cur='';
+  for(let i=0;i<bin.length;i++){
+    const c=bin.charCodeAt(i);
+    if(c>=32&&c<=126){cur+=bin[i];}
+    else{
+      if(cur.length>=5){
+        const t=cur.trim();
+        if(t.length>=4&&/[a-zA-ZÀ-ÿ]{2,}/.test(t)) lines.push(t);
       }
+      cur='';
     }
-    i++;
   }
-
-  // Strategy 2: If BT/ET found nothing useful, fall back to ASCII extraction
-  if(lines.filter(l=>/[a-zA-ZáéíóúñÁÉÍÓÚÑ]/.test(l)).length<5){
-    let current='';
-    for(let j=0;j<str.length;j++){
-      const c=str.charCodeAt(j);
-      if(c>=32&&c<=126){current+=str[j];}
-      else{
-        if(current.length>=4){
-          const t=current.trim();
-          if(t.length>=4&&/[a-zA-Z]/.test(t)) lines.push(t);
-        }
-        current='';
-      }
-    }
-    if(current.trim().length>=4) lines.push(current.trim());
-  }
-
-  // Filter: must contain Spanish letters and be meaningful
-  return [...new Set(lines)]
-    .filter(l=>/[a-záéíóúñüA-ZÁÉÍÓÚÑÜ]{3,}/.test(l)&&l.length>=4)
-    .map(l=>l.replace(/\n/g,' ').replace(/\s+/g,' ').trim())
-    .filter(l=>l.length>=4);
+  if(cur.trim().length>=4) lines.push(cur.trim());
+  return [...new Set(lines)].filter(l=>l.length>=4);
 }
 
-/* ── CORE: extract items from rows (used by both Excel and PDF parsers) ── */
+
 function extractAndFillInventory(rows, fk){
   /* helpers */
   const toNum=v=>{
