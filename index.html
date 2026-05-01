@@ -695,9 +695,11 @@ addEventListener('DOMContentLoaded',async ()=>{
 
 function restoreUI(){
   if(S.allProjects.length){
-    document.getElementById('xl-zone').classList.add('loaded');
-    document.getElementById('xl-zone').querySelector('.xl-icon').textContent='📊';
-    document.getElementById('xl-sub').textContent=`✅ ${S.allProjects.length} proyectos cargados`;
+    // Update admin panel xl zone if it exists
+    const zone=document.getElementById('adm-xl-zone');
+    const sub=document.getElementById('xl-sub');
+    if(zone) zone.classList.add('loaded');
+    if(sub) sub.textContent=`✅ ${S.allProjects.length} proyectos cargados`;
   }
   if(S.openCodes.length) renderCurrent();
   else showPortada();
@@ -717,7 +719,8 @@ function updateStorageInfo(){
     el.style.color=kb>400000?'#c0392b':kb>200000?'#b86800':'#2a6a3a';
   }catch(e){el.textContent='';}
   // Refresh admin panel if open
-  if(document.getElementById('admin-modal').classList.contains('on')) updateAdmStatus();
+  const admEl=document.getElementById('admin-modal');
+  if(admEl&&admEl.classList.contains('on')) updateAdmStatus();
 }
 
 /* ── PORTADA ──────────────────────────────────────── */
@@ -756,8 +759,10 @@ function loadExcel(e){
       S.allProjects=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''});
       S.proyectosTS=''; // reset so GitHub version won't be blocked by old ts
       persist();hideL();
-      document.getElementById('xl-zone').classList.add('loaded');
-      document.getElementById('xl-sub').textContent=`✅ ${S.allProjects.length} proyectos cargados`;
+      const _zone=document.getElementById('adm-xl-zone');
+      const _sub=document.getElementById('xl-sub');
+      if(_zone)_zone.classList.add('loaded');
+      if(_sub)_sub.textContent=`✅ ${S.allProjects.length} proyectos cargados`;
       toast(`✅ ${S.allProjects.length} proyectos listos`);
     }catch(err){hideL();toast('❌ Error al leer Excel');}
   };
@@ -1577,7 +1582,7 @@ function importJSON(event){
 
       // Update Excel status display
       if(S.allProjects.length){
-        document.getElementById('xl-zone').classList.add('loaded');
+        const _z=document.getElementById('adm-xl-zone');if(_z)_z.classList.add('loaded');
         document.getElementById('xl-sub').textContent = `✅ ${S.allProjects.length} proyectos cargados`;
       }
     } catch(err){
