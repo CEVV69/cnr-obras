@@ -258,7 +258,7 @@ body{background:#b8bec8}
 .ptb-add,.ptb-del{background:none;border:none;color:#fff;display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12px;font-weight:600;padding:4px 8px}
 .ptb-mid{flex:1;text-align:center;color:#fff}
 .ptb-title{font-size:13px;font-weight:700}.ptb-sub{font-size:11px;opacity:.8}
-.ph-grid{display:grid;gap:6px;padding:6px;border:1px solid #b0b8c8;border-top:none;border-radius:0 0 8px 8px;background:#fff}
+.ph-grid{display:grid;gap:6px;padding:6px;border:1px solid #b0b8c8;border-top:none;border-radius:0 0 8px 8px;background:#fff;justify-content:center}
 .pg3{grid-template-columns:repeat(3,1fr)}.pg2{grid-template-columns:repeat(2,1fr)}
 .ph-cell{border:1px solid #c0c8d8;border-radius:6px;background:#f0f2f5;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;cursor:pointer;
   /* FIXED SIZE for uniform display in app */
@@ -857,7 +857,16 @@ function onSepChange(v){
 }
 
 /* ── FIELD HELPERS ─────────────────────────────── */
-function pi(k,p){return `<input class="pre" value="${x(String(p[k]||''))}" readonly>`;}
+function pi(k,p){
+  const val=String(p[k]||'');
+  // If field has a value: show pre-filled (styled) but still editable
+  // If field is empty: show as normal editable input
+  if(val){
+    return `<input class="pre" data-f="${k}" value="${x(val)}" title="Dato del Excel — puede editarse si es necesario">`;
+  } else {
+    return `<input data-f="${k}" value="" placeholder="—">`;
+  }
+}
 function ei(k,ph,rec,t='text'){return `<input type="${t}" data-f="${k}" value="${x(rec[k]||'')}" placeholder="${ph}">`;}
 function edt(k,rec){return `<input type="date" data-f="${k}" value="${rec[k]||td()}">`;}
 function esel(k,rec,opts){return `<select data-f="${k}">${opts.map(o=>`<option value="${o}" ${(rec[k]||opts[0])===o?'selected':''}>${o}</option>`).join('')}</select>`;}
@@ -1018,7 +1027,7 @@ function bFotos(p,isT,m){
   phs.forEach((ph,i)=>{
     cells+=`<div class="ph-cell"><img src="${ph}" alt="Foto ${i+1}"><button class="ph-del" onclick="event.stopPropagation();delPh('${pk}',${i},${cols},'${m}')">✕</button></div>`;
   });
-  return `<div class="slabel">REGISTRO FOTOGRÁFICO:</div>
+  return `<div class="slabel" style="font-weight:800;text-align:left;margin-bottom:6px">REGISTRO FOTOGRÁFICO:</div>
     <div class="ph-toolbar">
       <button class="ptb-add" onclick="addPh('${pk}',${max},${cols},'${m}')"><div class="circ-plus">+</div>Agregar foto</button>
       <div class="ptb-mid"><div class="ptb-title">Tomar fotografías</div></div>
@@ -1183,6 +1192,11 @@ function upFile(fk,sl,el){
 function viFile(fk){const f=S.files[fk];if(!f)return;const w=window.open();w.document.write(`<iframe src="${f.data}" style="width:100%;height:100%;border:none"></iframe>`);}
 
 /* ── PRESUPUESTO PARSER — pre-fill inventory ≥5% del total ── */
+
+
+/* ── PRESUPUESTO PARSER — PDF (text extraction) ── */
+
+/* ── PRESUPUESTO PARSER — Excel (multi-sheet, scored) ── */
 function parsePrespuesto(dataURL, fk){
   try{
     const b64=dataURL.split(',')[1];
@@ -1190,794 +1204,34 @@ function parsePrespuesto(dataURL, fk){
     const arr=new Uint8Array(bin.length);
     for(let i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
     const wb=XLSX.read(arr,{type:'array'});
-    const ws=wb.Sheets[wb.SheetNames[0]];
-    const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
-    if(!rows.length){toast('⚠️ Presupuesto vacío');return;}
 
-    /* ── helpers ── */
-    const toNum=v=>{
-      let s=String(v||'').replace(/[$\s%]/g,'').trim();
-      if(!s)return NaN;
-      // Chilean: 1.234.567,89 → 1234567.89
-      if(s.includes(',')&&s.includes('.')){s=s.replace(/\./g,'').replace(',','.');}
-      else if(s.includes('.')&&(s.match(/\./g)||[]).length>1){s=s.replace(/\./g,'');}
-      else if(s.includes(',')&&!s.includes('.')){s=s.replace(',','.');}
+    // Score each sheet: prefer sheet with most rows containing BOTH text AND large number
+    const toN=v=>{
+      let s=String(v||'').replace(/[$\s]/g,'').replace(/\./g,'').replace(',','.');
       return parseFloat(s);
     };
-    const clean=v=>String(v||'').trim();
-    const isDesc=v=>{const s=clean(v);return s.length>3&&isNaN(toNum(s))&&!/^\d+$/.test(s);};
-    const lc=v=>String(v||'').toLowerCase();
-
-    /* ── find header row (first row with a description-like AND amount-like header) ── */
-    let headerRow=-1,descCol=-1,amtCol=-1,unitCol=-1,cantCol=-1;
-
-    // Scan first 15 rows for a row that looks like a table header
-    for(let r=0;r<Math.min(15,rows.length)&&headerRow<0;r++){
-      const row=rows[r];
-      let dC=-1,aC=-1,uC=-1,qC=-1;
-      for(let c=0;c<row.length;c++){
-        const v=lc(row[c]);
-        if(dC<0&&(v.includes('descrip')||v.includes('partida')||v.includes('item')||v.includes('detalle')||v.includes('concepto')||v.includes('nombre')||v.includes('material')||v.includes('elemento')))dC=c;
-        if(aC<0&&(v.includes('total')||v.includes('monto')||v.includes('precio')||v.includes('valor')||v.includes('importe')))aC=c;
-        if(uC<0&&(v.includes('unidad')||v.includes('ud.')||v==='un'||v==='u'))uC=c;
-        if(qC<0&&(v.includes('cant')||v.includes('ctd')||v==='n°'||v.includes('cantidad')))qC=c;
-      }
-      if(dC>=0&&aC>=0){headerRow=r;descCol=dC;amtCol=aC;unitCol=uC;cantCol=qC;}
-    }
-
-    /* ── fallback: find columns by scanning data content ── */
-    if(headerRow<0){
-      // Find rightmost column with mostly positive numbers → amount column
-      const scanRows=rows.slice(0,Math.min(50,rows.length));
-      let bestAmt=0,bestAC=0;
-      for(let c=0;c<20;c++){
-        let hits=0;
-        scanRows.forEach(r=>{const n=toNum(r[c]);if(!isNaN(n)&&n>100)hits++;});
-        if(hits>bestAmt){bestAmt=hits;bestAC=c;}
-      }
-      amtCol=bestAC;
-      // Find longest-text column to the left of amtCol → description column
-      let bestDesc=0,bestDC=0;
-      for(let c=0;c<amtCol;c++){
-        let len=0;
-        scanRows.forEach(r=>{len+=clean(r[c]).length;});
-        if(len>bestDesc){bestDesc=len;bestDC=c;}
-      }
-      descCol=bestDC;
-      headerRow=0;
-    }
-
-    /* ── find TOTAL row (last row containing "total" keyword with a big number) ── */
-    let totalRow=rows.length;
-    for(let r=rows.length-1;r>=headerRow+1;r--){
-      const row=rows[r];
-      const hasTotal=row.some(v=>/(total|gran\s*total|monto\s*total)/i.test(String(v||'')));
-      if(hasTotal){totalRow=r;break;}
-    }
-
-    /* ── collect items ── */
-    const allItems=[];
-    let grandTotal=0;
-    for(let r=headerRow+1;r<totalRow;r++){
-      const row=rows[r];if(!row||!row.length)continue;
-      const desc=clean(row[descCol]);
-      if(!isDesc(desc))continue; // skip rows that are numbers, subtitles of just separators
-      const amt=toNum(row[amtCol]);
-      if(isNaN(amt)||amt<=0)continue;
-      const unit=unitCol>=0?clean(row[unitCol]):'';
-      const cant=cantCol>=0?clean(row[cantCol]):'1';
-      allItems.push({desc,amt,unit,cant});
-      grandTotal+=amt;
-    }
-
-    /* ── if grand total wasn't found from summing, try to read it from the total row ── */
-    if(grandTotal<=0&&totalRow<rows.length){
-      const tRow=rows[totalRow];
-      for(let c=amtCol;c<tRow.length;c++){
-        const n=toNum(tRow[c]);
-        if(!isNaN(n)&&n>0){grandTotal=n;break;}
-      }
-      // re-collect items without grand total filter
-      if(grandTotal>0&&allItems.length===0){
-        for(let r=headerRow+1;r<totalRow;r++){
-          const row=rows[r];if(!row||!row.length)continue;
-          const desc=clean(row[descCol]);
-          if(!isDesc(desc))continue;
-          const amt=toNum(row[amtCol]);
-          if(isNaN(amt)||amt<=0)continue;
-          const unit=unitCol>=0?clean(row[unitCol]):'';
-          const cant=cantCol>=0?clean(row[cantCol]):'1';
-          allItems.push({desc,amt,unit,cant});
-        }
-      }
-    }
-
-    if(grandTotal<=0||allItems.length===0){
-      toast('⚠️ No se pudo leer el presupuesto. Verifique el formato del Excel.');
-      return;
-    }
-
-    /* ── filter ≥5% ; if none qualify use top items by amount (up to 10) ── */
-    const threshold=0.05*grandTotal;
-    let significant=allItems.filter(it=>it.amt>=threshold);
-    if(significant.length===0){
-      // no item reaches 5% — take items that together represent the top 80% of cost
-      const sorted=[...allItems].sort((a,b)=>b.amt-a.amt);
-      let acc=0;
-      for(const it of sorted){
-        significant.push(it);
-        acc+=it.amt;
-        if(acc/grandTotal>=0.80)break;
-      }
-    }
-
-    /* ── determine project/module and build inventory rows ── */
-    const cod=S.openCodes[S.ci];if(!cod)return;
-    const p=S.allProjects.find(r=>r['Código Proyecto']===cod);
-    const isT=p?String(p['Tipo Obra']||'').toLowerCase().includes('tecnif'):true;
-    const ik=`inv_${cod}_${S.mod}`;
-
-    const newItems=significant.map(it=>{
-      const pct=((it.amt/grandTotal)*100).toFixed(1);
-      if(isT){
-        // Tecnificación: Elemento, Modelo, Marca, Cantidad, N° Serie
-        return {
-          elem: it.desc.substring(0,80),
-          mod:  '',
-          marc: '',
-          cant: it.cant||'1',
-          ser:  '',
-          _pct: pct
-        };
-      } else {
-        // Obras Civiles: Cantidad, Tipo Obra, Dimensiones, Coordenadas, Obs.técnicas
-        return {
-          cant: it.cant||'1',
-          tipo: it.desc.substring(0,80),
-          dim:  it.unit?`Unidad: ${it.unit}`:'',
-          coo:  '',
-          obs:  `${pct}% presupuesto`,
-          _pct: pct
-        };
-      }
-    });
-
-    /* ── merge or replace ── */
-    const existing=S.inv[ik]||[];
-    const isEmpty=existing.length===0||(existing.length===1&&!existing[0].elem&&!existing[0].tipo);
-    if(!isEmpty){
-      if(!confirm(`Se encontraron ${newItems.length} ítems con ≥5% del presupuesto (total: $${Math.round(grandTotal).toLocaleString('es-CL')}).\n\n¿Reemplazar el inventario actual?\n[OK]=Reemplazar · [Cancelar]=Mantener actual`)) return;
-    }
-    S.inv[ik]=newItems;
-    persist();
-    renderCurrent();
-    toast(`✅ ${newItems.length} ítems cargados desde presupuesto (total $${Math.round(grandTotal).toLocaleString('es-CL')})`);
-
-  }catch(err){
-    console.error('Presupuesto parse error:',err);
-    toast('⚠️ Error al procesar el presupuesto. Verifique que sea un Excel válido.');
-  }
-}
-
-/* ── GPS ─────────────────────────────────────────── */
-function oGPS(lat,lng,norte,este){
-  // Strategy 1: use LatitudConvertida/LongitudConvertida if valid WGS84
-  const la=parseFloat(lat), lo=parseFloat(lng);
-  if(!isNaN(la)&&!isNaN(lo)&&la>=-56&&la<=-17&&lo>=-76&&lo<=-66){
-    openGoogleMapsPin(la,lo); return;
-  }
-  // Strategy 2: Norte/Este may already be decimal degrees (some rows in Excel store them that way)
-  const na=parseFloat(norte), ea=parseFloat(este);
-  if(!isNaN(na)&&!isNaN(ea)&&na>=-56&&na<=-17&&ea>=-76&&ea<=-66){
-    openGoogleMapsPin(na,ea); return;
-  }
-  // Strategy 3: UTM Zone 19S conversion
-  if(!isNaN(na)&&!isNaN(ea)&&na>100000&&ea>100000){
-    const res=utmToLatLng(ea,na,19,false);
-    if(res) { openGoogleMapsPin(res.lat,res.lng); return; }
-  }
-  toast('Sin coordenadas GPS válidas para este proyecto');
-}
-function openGoogleMapsPin(lat,lng){
-  // Use /search/?api=1&query= which always drops a pin
-  const url=`https://www.google.com/maps/search/?api=1&query=${lat.toFixed(6)},${lng.toFixed(6)}`;
-  window.open(url,'_blank');
-}
-function utmToLatLng(easting,northing,zone,isNorth){
-  try{
-    const k0=0.9996,a=6378137.0,e2=0.006694379990;
-    const e1sq=e2/(1-e2);
-    const x=easting-500000;
-    const y=isNorth?northing:northing-10000000;
-    const lon0=(zone-1)*6-180+3;
-    const M=y/k0;
-    const mu=M/(a*(1-e2/4-3*e2*e2/64-5*e2*e2*e2/256));
-    const e1=(1-Math.sqrt(1-e2))/(1+Math.sqrt(1-e2));
-    const J1=(3*e1/2-27*e1*e1*e1/32);
-    const J2=(21*e1*e1/16-55*e1*e1*e1*e1/32);
-    const J3=(151*e1*e1*e1/96);
-    const fp=mu+J1*Math.sin(2*mu)+J2*Math.sin(4*mu)+J3*Math.sin(6*mu);
-    const e2n=e1sq*Math.cos(fp)*Math.cos(fp);
-    const C1=e2n;
-    const T1=Math.tan(fp)*Math.tan(fp);
-    const N1=a/Math.sqrt(1-e2*Math.sin(fp)*Math.sin(fp));
-    const R1=a*(1-e2)/Math.pow(1-e2*Math.sin(fp)*Math.sin(fp),1.5);
-    const D=x/(N1*k0);
-    const Q1=N1*Math.tan(fp)/R1;
-    const Q2=(D*D/2);
-    const Q3=(5+3*T1+10*C1-4*C1*C1-9*e2n)*D*D*D*D/24;
-    const Q4=(61+90*T1+298*C1+45*T1*T1-252*e2n-3*C1*C1)*D*D*D*D*D*D/720;
-    const latRad=fp-Q1*(Q2-Q3+Q4);
-    const Q5=D;
-    const Q6=(1+2*T1+C1)*D*D*D/6;
-    const Q7=(5-2*C1+28*T1-3*C1*C1+8*e2n+24*T1*T1)*D*D*D*D*D/120;
-    const lngRad=(Q5-Q6+Q7)/Math.cos(fp);
-    const lat=latRad*180/Math.PI;
-    const lng=lon0+lngRad*180/Math.PI;
-    if(lat>=-90&&lat<=90&&lng>=-180&&lng<=180) return{lat,lng};
-  }catch(e){}
-  return null;
-}
-function oMap(lat,lng,p){window.open(p==='apple'?`maps://maps.apple.com/?q=${lat},${lng}`:`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`,'_blank');}
-
-/* ── INFO MODAL ─────────────────────────────────── */
-function openInfo(){
-  const cod=S.openCodes[S.ci];
-  const p=S.allProjects.find(r=>r['Código Proyecto']===cod);
-  const b=document.getElementById('info-body');
-  if(!p){b.innerHTML='<p style="color:#888;font-size:12px">Sin proyecto.</p>';document.getElementById('info-modal').classList.add('on');return;}
-  const isT=String(p['Tipo Obra']||'').toLowerCase().includes('tecnif');
-  const mods=parseInt(p['N° Modificaciones'])||0;
-  let mh='';
-  for(let i=1;i<=Math.min(mods,3);i++){const e=p[`EstadoModificacion${i}`]||'—';const cl=e.includes('Con Obs')?'#fef3c7;color:#b45309':'#dcfce7;color:#166534';mh+=`<div class="ikv"><div class="ik">Modificación ${i}</div><div class="iv"><span style="background:${cl};padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700">${e}</span></div></div>`;}
-  b.innerHTML=`
-    <div class="ikv"><div class="ik">Consultor</div><div class="iv">${x(p['Consultor']||'—')}</div></div>
-    <div class="ikv"><div class="ik">Inicio Anticipado</div><div class="iv">${p['Inicio anticipado']||'No'}</div></div>
-    <div class="ikv"><div class="ik">Artículo</div><div class="iv">${p['Artículo']||'—'}</div></div>
-    <div class="ikv"><div class="ik">Fuente de Agua</div><div class="iv">${p['Fuente Agua']||'—'}</div></div>
-    <div class="ikv"><div class="ik">Sup. Ponderada</div><div class="iv">${p['Superficie ponderada']||'—'} há</div></div>
-    ${isT?`<div class="ikv"><div class="ik">Potencia instalada</div><div class="iv">${p['Potencia instalada']||'—'} kW</div></div><div class="ikv"><div class="ik">N° Paneles</div><div class="iv">${p['N° Paneles']||'—'}</div></div>`:`<div class="ikv"><div class="ik">Km Inicial</div><div class="iv">${p['Km inicial']||'—'}</div></div><div class="ikv"><div class="ik">Km Final</div><div class="iv">${p['Km final']||'—'}</div></div>`}
-    <hr class="ihr">
-    <div class="ikv"><div class="ik">Estado</div><div class="iv">${p['Estado']||'—'}</div></div>
-    <div class="ikv"><div class="ik">N° Modificaciones</div><div class="iv">${mods}</div></div>${mh}
-    <hr class="ihr">
-    <div class="ikv"><div class="ik">Concurso</div><div class="iv">${p['Concurso']||'—'} / ${p['Año Concurso']||'—'}</div></div>
-    <div class="ikv"><div class="ik">Tiene Término Obra</div><div class="iv">${p['TieneTerminoObra']||'—'}</div></div>
-    <div class="ikv"><div class="ik">Carta término</div><div class="iv">${p['Fecha ingreso carta término de obras']||'—'}</div></div>
-    <div class="ikv"><div class="ik">Programa</div><div class="iv">${p['ProgramaNuevaLey']||'—'}</div></div>`;
-  document.getElementById('info-modal').classList.add('on');
-}
-function closeInfo(){document.getElementById('info-modal').classList.remove('on');}
-
-/* ── SAVE ────────────────────────────────────────── */
-function save(){
-  if(!S.openCodes.length)return;
-  const cod=S.openCodes[S.ci],m=S.mod,rk=`${cod}_${m}`,rec={};
-  document.querySelectorAll('[data-f]').forEach(el=>{rec[el.dataset.f]=el.value;});
-  rec['_sep']=document.getElementById('sep-sel')?.value||'No';
-  S.rec[rk]=rec;persist();toast('💾 Guardado');
-}
-
-/* ── PDF — fiel al acta FileMaker ────────────────── */
-function buildPDFHTML(p,m,rec,isT,items,photos,sig){
-  const cols=isT?3:2;
-  const PHW=isT?180:260; // px width per photo in PDF
-  const PHH=isT?135:195;
-
-  // Inventory table
-  let invRows='';
-  if(m==='recepcion'||m==='visita'){
-    if(isT){
-      invRows=items.map((it,i)=>`<tr><td style="text-align:center">${i+1}</td><td>${it.elem||''}</td><td>${it.mod||''}</td><td>${it.marc||''}</td><td style="text-align:center">${it.cant||''}</td><td>${it.ser||''}</td></tr>`).join('');
-    } else {
-      invRows=items.map((it,i)=>`<tr><td style="text-align:center">${i+1}</td><td style="text-align:center">${it.cant||''}</td><td>${it.tipo||''}</td><td>${it.dim||''}</td><td>${it.coo||''}</td><td>${it.obs||''}</td></tr>`).join('');
-    }
-  }
-
-  // Photos — FIXED uniform size
-  let photoGrid='';
-  if(photos.length){
-    const phCells=photos.map((ph,i)=>
-      `<td style="padding:4px;text-align:center;vertical-align:top">
-        <img src="${ph}" style="width:${PHW}px;height:${PHH}px;object-fit:cover;border:1px solid #ccc;display:block">
-        <div style="font-size:9px;color:#666;margin-top:2px">Foto ${i+1}</div>
-      </td>`
-    );
-    // chunk into rows of `cols`
-    let rows='';
-    for(let i=0;i<phCells.length;i+=cols){
-      rows+=`<tr>${phCells.slice(i,i+cols).join('')}</tr>`;
-    }
-    photoGrid=`<h3 style="margin:16px 0 8px;font-size:12px;color:#2e3d5c;border-bottom:1.5px solid #2e3d5c;padding-bottom:3px">REGISTRO FOTOGRÁFICO</h3>
-      <table style="border-collapse:collapse">${rows}</table>`;
-  }
-
-  const sigBlock=sig
-    ?`<div style="margin-top:24px;text-align:center">
-        <img src="${sig}" style="height:80px;border-bottom:1px solid #1a2a3a;display:block;margin:0 auto">
-        <p style="font-size:11px;margin-top:6px;font-weight:600">${x(rec['_sup']||SUPS[0])}</p>
-        <p style="font-size:10px;color:#555">Unidad de Supervisión y Seguimiento de Obras Construidas<br>CNR Ñuble</p>
-      </div>` : '';
-
-  const modTitles={inicio:'INICIO DE OBRAS',visita:'VISITA DE SUPERVISIÓN INTERMEDIA',recepcion:'RECEPCIÓN DE OBRAS'};
-
-  return `<!DOCTYPE html><html><head><meta charset="UTF-8">
-  <title>Acta ${ML[m]} – ${p['Código Proyecto']}</title>
-  <style>
-    body{font-family:'Helvetica Neue',Arial,sans-serif;font-size:12px;color:#1a2a3a;margin:0;padding:0}
-    .page{padding:20px 24px;max-width:210mm;margin:0 auto}
-    h2{font-size:13px;text-align:center;color:#2e3d5c;margin:0 0 2px;font-weight:700;text-transform:uppercase}
-    h3{font-size:11px;text-align:center;color:#444;margin:0 0 16px;font-weight:400}
-    .sec-title{font-size:12px;font-weight:700;color:#1a2a3a;margin:14px 0 6px;text-transform:uppercase}
-    .field-table{width:100%;border-collapse:collapse;margin-bottom:4px}
-    .field-table td{padding:3px 5px;font-size:12px;vertical-align:top}
-    .field-table .lbl{font-weight:700;width:150px;white-space:nowrap}
-    .field-table .sep{width:14px;color:#555}
-    .field-table .val{border-bottom:1px solid #bbb}
-    .inv-table{border-collapse:collapse;width:100%;font-size:11px;margin-bottom:4px}
-    .inv-table th{background:#3a4a6b;color:#fff;padding:5px 7px;text-align:left;font-size:11px;font-weight:700}
-    .inv-table td{border:1px solid #ccc;padding:4px 6px}
-    .inv-table tr:nth-child(even) td{background:#f5f6f8}
-    .arch-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px}
-    .arch-chip{border:1px solid #bbb;border-radius:3px;padding:3px 9px;font-size:11px;color:#333}
-    .obs-block{border:1px solid #bbb;border-radius:3px;margin-bottom:10px;overflow:hidden}
-    .obs-item{padding:6px 10px;border-bottom:1px solid #e0e4ea}
-    .obs-item:last-child{border-bottom:none}
-    .obs-item .ol{font-size:10px;font-weight:700;color:#3a4a6b;text-transform:uppercase}
-    .obs-item .ov{font-size:12px;min-height:18px}
-    @page{margin:15mm;size:A4}
-  </style></head><body><div class="page">
-  ${m==='recepcion'
-    ? `<h2>ACTA DE INVENTARIO DE EQUIPOS Y ELEMENTOS DE RIEGO</h2>
-       <h2>CONCURSO ${p['Concurso']||''}-${p['Año Concurso']||''} REGIÓN DE ÑUBLE, LEY 18.450</h2>`
-    : m==='inicio'
-    ? `<h2>ACTA DE VISITA INICIO DE OBRAS</h2>
-       <h2>CONCURSO ${p['Concurso']||''}-${p['Año Concurso']||''}, LEY 18.450</h2>`
-    : `<h2>ACTA DE SUPERVISIÓN DE PROYECTO ${p['Código Proyecto']||''}</h2>
-       <h2>LEY 18.450</h2>`
-  }
-
-  <div class="sec-title">1.- Identificación:</div>
-  <table class="field-table">
-    <tr><td class="lbl">Código del proyecto</td><td class="sep">:</td><td class="val">${p['Código Proyecto']||''}</td><td width="20"></td><td class="lbl">CBRD N°</td><td class="sep">:</td><td class="val">${p['CBRD']||''}</td></tr>
-    <tr><td class="lbl">Nombre del proyecto</td><td class="sep">:</td><td class="val" colspan="5">${p['Nombre proyecto']||''}</td></tr>
-    <tr><td class="lbl">Beneficiario</td><td class="sep">:</td><td class="val" colspan="5">${p['Nombre']||''}</td></tr>
-    <tr><td class="lbl">Representante</td><td class="sep">:</td><td class="val" colspan="5">${rec['_rep']||''}</td></tr>
-    <tr><td class="lbl">Rol</td><td class="sep">:</td><td class="val" colspan="5">${p['Rol']||''}</td></tr>
-    <tr><td class="lbl">Predio</td><td class="sep">:</td><td class="val" colspan="5">${p['Predio']||''}</td></tr>
-    <tr><td class="lbl">Provincia</td><td class="sep">:</td><td class="val">${p['Provincia']||''}</td><td></td><td class="lbl">Comuna</td><td class="sep">:</td><td class="val">${p['Comuna']||''}</td></tr>
-    ${!isT?`<tr><td class="lbl">Localidad</td><td class="sep">:</td><td class="val">${rec['_localidad']||''}</td><td></td><td class="lbl">Teléfono</td><td class="sep">:</td><td class="val">${p['Teléfono Contacto']||''}</td></tr>`:''}
-    <tr><td class="lbl">Coordenadas UTM</td><td class="sep">:</td><td class="val">N: ${p['Norte']||'—'} &nbsp; E: ${p['Este']||'—'} &nbsp; Huso: ${p['Huso']||'—'}</td><td></td><td class="lbl">Fecha</td><td class="sep">:</td><td class="val">${rec['_fecha']||''}</td></tr>
-  </table>
-
-  ${(m==='recepcion'||m==='visita')?`
-  <div class="sec-title">2.- Inventario${isT?' de Equipos y Elementos':' de Obras Civiles'}:</div>
-  <table class="inv-table">
-    ${isT
-      ?`<thead><tr><th>N°</th><th>Elemento</th><th>Modelo</th><th>Marca</th><th>Cant.</th><th>N° Serie</th></tr></thead><tbody>${invRows}</tbody>`
-      :`<thead><tr><th>N°</th><th>Cant.</th><th>Tipo Obra</th><th>Dimensiones relevantes</th><th>Coordenadas inicio y fin de obra</th><th>Obs. técnicas (Materiales, otros)</th></tr></thead><tbody>${invRows}</tbody>`}
-  </table>`:''}
-
-  ${m==='inicio'?`
-  <div class="sec-title">Datos de Inicio de Obras:</div>
-  <table class="field-table">
-    <tr><td class="lbl">Fecha inicio de obras</td><td class="sep">:</td><td class="val">${rec['_f_ini']||''}</td><td></td><td class="lbl">Plazo ejecución</td><td class="sep">:</td><td class="val">${rec['_plazo']||''} días</td></tr>
-    <tr><td class="lbl">Constructor</td><td class="sep">:</td><td class="val" colspan="5">${rec['_constr']||''}</td></tr>
-    <tr><td class="lbl">Profesional residente</td><td class="sep">:</td><td class="val" colspan="5">${rec['_resid']||''}</td></tr>
-  </table>
-  <div class="obs-block">
-    <div class="obs-item"><div class="ol">Condiciones al inicio</div><div class="ov">${rec['_cond']||''}</div></div>
-    <div class="obs-item"><div class="ol">Compromisos y acuerdos</div><div class="ov">${rec['_comp']||''}</div></div>
-    <div class="obs-item"><div class="ol">Pendientes</div><div class="ov">${rec['_obs_ini']||''}</div></div>
-  </div>`:''}
-
-  ${m==='visita'?`
-  <div class="sec-title">Visita de Supervisión Intermedia:</div>
-  <table class="field-table">
-    <tr><td class="lbl">Fecha visita</td><td class="sep">:</td><td class="val">${rec['_f_vis']||''}</td><td></td><td class="lbl">% Avance estimado</td><td class="sep">:</td><td class="val">${rec['_av']||0}%</td></tr>
-    <tr><td class="lbl">Etapa constructiva</td><td class="sep">:</td><td class="val" colspan="5">${rec['_etapa']||''}</td></tr>
-    <tr><td class="lbl">Conformidad</td><td class="sep">:</td><td class="val">${rec['_conf']||''}</td><td></td><td class="lbl">Plazo reparos</td><td class="sep">:</td><td class="val">${rec['_plaz_rep']||''} días</td></tr>
-  </table>
-  <div class="obs-block">
-    <div class="obs-item"><div class="ol">Observaciones técnicas</div><div class="ov">${rec['_obs_vis']||''}</div></div>
-    <div class="obs-item"><div class="ol">Acuerdos y compromisos</div><div class="ov">${rec['_acuerd']||''}</div></div>
-  </div>`:''}
-
-  ${(rec['_obs']||rec['_pend'])&&m==='recepcion'?`
-  <div class="obs-block">
-    <div class="obs-item"><div class="ol">Observación modificaciones u otro</div><div class="ov">${rec['_obs']||''}</div></div>
-    <div class="obs-item"><div class="ol">Pendientes a la recepción</div><div class="ov">${rec['_pend']||''}</div></div>
-  </div>`:''}
-
-  ${photoGrid}
-  ${sigBlock}
-  </div>
-
-</body></html>`;
-}
-
-function getPDFData(){
-  const cod=S.openCodes[S.ci];if(!cod)return null;
-  const p=S.allProjects.find(r=>r['Código Proyecto']===cod);if(!p)return null;
-  const m=S.mod,rk=`${cod}_${m}`,rec=S.rec[rk]||{};
-  const isT=String(p['Tipo Obra']||'').toLowerCase().includes('tecnif');
-  const ik=`inv_${cod}_${m}`,items=S.inv[ik]||[];
-  const photos=S.ph[`ph_${cod}_${m}`]||[];
-  const sig=S.sigs[rk]||'';
-  return{p,m,rec,isT,items,photos,sig,cod};
-}
-
-function doPDF(print){
-  save();
-  const d=getPDFData();if(!d){toast('Abra un proyecto');return;}
-  const html=buildPDFHTML(d.p,d.m,d.rec,d.isT,d.items,d.photos,d.sig);
-  const w=window.open('','_blank');
-  w.document.write(html);w.document.close();
-  if(print)setTimeout(()=>w.print(),500);
-}
-
-/* ── EMAIL: descarga HTML como archivo + abre cliente correo ─── */
-function doEmail(){
-  save();
-  const d=getPDFData();if(!d){toast('Abra un proyecto');return;}
-  const htmlContent=buildPDFHTML(d.p,d.m,d.rec,d.isT,d.items,d.photos,d.sig);
-  // 1. Download the acta as an HTML file (opens in browser, printable as PDF)
-  const blob=new Blob([htmlContent],{type:'text/html;charset=utf-8'});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');
-  const fname=`Acta_${d.cod}_${ML[d.m].replace(/ /g,'_')}.html`;
-  a.href=url;a.download=fname;document.body.appendChild(a);a.click();
-  document.body.removeChild(a);setTimeout(()=>URL.revokeObjectURL(url),2000);
-  // 2. Open mail client
-  setTimeout(()=>{
-    const subj=encodeURIComponent(`CNR Ñuble – ${ML[d.m]} – ${d.cod}`);
-    const body=encodeURIComponent(
-      `Estimado(a),\n\nAdjunto acta de ${ML[d.m]} del proyecto:\n\n`+
-      `Código: ${d.cod}\nProyecto: ${d.p['Nombre proyecto']}\n`+
-      `Beneficiario: ${d.p['Nombre']}\nFecha: ${d.rec['_fecha']||''}\n\n`+
-      `El archivo del acta fue descargado en su dispositivo (${fname}).\n`+
-      `Adjúntelo a este correo antes de enviarlo.\n\n`+
-      `Saludos,\n${d.rec['_sup']||SUPS[0]}\n`+
-      `Unidad de Supervisión y Seguimiento de Obras Construidas\nCNR Ñuble`
-    );
-    window.open(`mailto:?subject=${subj}&body=${body}`);
-  },600);
-  toast('📥 Acta descargada. Adjúntela al correo.',4000);
-}
-
-
-/* ── EXPORTAR / IMPORTAR JSON (sincronización entre dispositivos) ── */
-function exportJSON(){
-  save(); // save any pending form data first
-  const payload={
-    version:2,
-    exported: new Date().toISOString(),
-    deviceNote:'Exportado desde CNR Ñuble PWA',
-    allProjects: S.allProjects,
-    openCodes:   S.openCodes,
-    ci:          S.ci,
-    mod:         S.mod,
-    rec:         S.rec,
-    inv:         S.inv,
-    ph:          S.ph,     // fotos incluidas (base64)
-    files:       S.files,  // archivos adjuntos
-    sigs:        S.sigs,   // firmas
-  };
-  const json = JSON.stringify(payload, null, 2);
-  const blob = new Blob([json], {type:'application/json;charset=utf-8'});
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  const ts   = new Date().toISOString().slice(0,10);
-  const cod  = S.openCodes[S.ci] || 'sinproyecto';
-  a.href     = url;
-  a.download = `CNR_datos_${cod}_${ts}.json`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  setTimeout(()=>URL.revokeObjectURL(url), 2000);
-  toast('📤 Datos exportados — incluye fotos y formularios', 4000);
-}
-
-function importJSON(event){
-  const file = event.target.files[0];
-  if(!file) return;
-  if(!file.name.endsWith('.json')){toast('⚠️ Seleccione un archivo .json');return;}
-  const fr = new FileReader();
-  fr.onload = ev => {
-    try{
-      const payload = JSON.parse(ev.target.result);
-      if(!payload.version||!payload.allProjects){
-        toast('❌ Archivo JSON no válido o de otra aplicación');
-        return;
-      }
-      // Ask before overwriting
-      const existing = S.openCodes.length > 0;
-      const msg = existing
-        ? `¿Importar datos del archivo "${file.name}"?\n\nEsto REEMPLAZARÁ todos los datos actuales de este dispositivo.\n[OK] = Importar  [Cancelar] = Mantener actuales`
-        : `¿Importar datos del archivo "${file.name}"?`;
-      if(existing && !confirm(msg)) return;
-
-      // Merge strategy: import everything from the file
-      S.allProjects = payload.allProjects || S.allProjects;
-      S.openCodes   = payload.openCodes   || [];
-      S.ci          = payload.ci          || 0;
-      S.mod         = payload.mod         || 'recepcion';
-      S.rec         = payload.rec         || {};
-      S.inv         = payload.inv         || {};
-      S.ph          = payload.ph          || {};
-      S.files       = payload.files       || {};
-      S.sigs        = payload.sigs        || {};
-
-      persist();
-      // Re-render everything immediately — no restart needed
-      updateStorageInfo();
-      updateAdmStatus();
-      if(S.openCodes.length>0){
-        renderCurrent();
-        actTab(S.mod);
-        document.getElementById('screen-portada').style.display='none';
-        document.getElementById('screen-form').style.display='block';
-        document.getElementById('recbar').style.display='flex';
-        document.getElementById('nav-num').textContent=S.ci+1;
-        document.getElementById('nav-prev').disabled=S.ci<=0;
-        document.getElementById('nav-next').disabled=S.ci>=S.openCodes.length-1;
-      } else {
-        showPortada();
-      }
-      // Update xl-zone
-      if(S.allProjects.length){
-        const zone=document.getElementById('adm-xl-zone');
-        const sub=document.getElementById('xl-sub');
-        if(zone) zone.classList.add('loaded');
-        if(sub) sub.textContent=`✅ ${S.allProjects.length} proyectos cargados`;
-      }
-      toast(`✅ Datos importados desde "${file.name}"`, 4000);
-
-      // Update Excel status display
-      if(S.allProjects.length){
-        document.getElementById('xl-zone').classList.add('loaded');
-        document.getElementById('xl-sub').textContent = `✅ ${S.allProjects.length} proyectos cargados`;
-      }
-    } catch(err){
-      console.error('Import error:', err);
-      toast('❌ Error al leer el archivo. Verifique que sea un JSON de CNR.');
-    }
-  };
-  fr.readAsText(file);
-  event.target.value = ''; // allow re-importing same file
-}
-
-
-/* ── ADMIN MODAL ─────────────────────────────────── */
-function openAdmin(){
-  updateAdmStatus();
-  document.getElementById('admin-modal').classList.add('on');
-}
-function closeAdmin(){document.getElementById('admin-modal').classList.remove('on');}
-
-function updateAdmStatus(){
-  const el=document.getElementById('adm-status');
-  const btn=document.getElementById('btn-generar-json');
-  if(!el)return;
-  const n=S.allProjects.length;
-  const phCount=Object.values(S.ph).reduce((a,arr)=>a+(arr?.length||0),0);
-  try{
-    const kb=Math.round(JSON.stringify(S).length*0.75/1024);
-    const mb=(kb/1024).toFixed(1);
-    if(n>0){
-      el.className='adm-status';
-      el.innerHTML=`✅ <strong>${n} proyectos</strong> cargados · ${phCount} fotos · ${mb} MB usados<br>
-        <span style="font-size:10px;color:#555">Almacenamiento: IndexedDB (~500 MB disponibles)</span>`;
-      if(btn)btn.disabled=false;
-      const delBtn=document.getElementById('btn-del-excel');
-      if(delBtn)delBtn.style.display='block';
-    } else {
-      el.className='adm-status empty';
-      el.innerHTML='⚠️ Sin proyectos cargados. Cargue el Excel de proyectos.';
-      if(btn)btn.disabled=true;
-      const delBtn2=document.getElementById('btn-del-excel');
-      if(delBtn2)delBtn2.style.display='none';
-    }
-  }catch(e){el.textContent='—';}
-  // Update xl-zone style
-  const zone=document.getElementById('adm-xl-zone');
-  const sub=document.getElementById('xl-sub');
-  if(zone&&sub){
-    if(n>0){
-      zone.classList.add('loaded');
-      sub.textContent=`✅ ${n} proyectos cargados`;
-    } else {
-      zone.classList.remove('loaded');
-      sub.textContent='Toque para seleccionar el archivo';
-    }
-  }
-}
-
-
-/* ── ELIMINAR EXCEL ── */
-function eliminarExcel(){
-  if(!S.allProjects.length){toast('No hay Excel cargado');return;}
-  if(!confirm(`¿Eliminar los ${S.allProjects.length} proyectos cargados?\n\nLos datos de formularios y fotos se conservan.\n[OK] = Eliminar`)) return;
-  S.allProjects=[];
-  S.openCodes=[];
-  S.ci=0;
-  persist();
-  updateAdmStatus();
-  updateStorageInfo();
-  showPortada();
-  toast('🗑️ Excel eliminado. Cargue uno nuevo.');
-}
-
-/* ── GENERATE proyectos.json FOR GITHUB ── */
-function generarProyectosJSON(){
-  if(!S.allProjects.length){toast('Sin proyectos para exportar');return;}
-  const ts=new Date().toISOString();
-  S.proyectosTS=ts; // store local timestamp too
-  persist();
-  const payload={
-    version:2,
-    generated: ts,
-    note:'Generado por CNR Ñuble PWA. Subir a GitHub junto con index.html.',
-    projects: S.allProjects
-  };
-  const json=JSON.stringify(payload,null,2);
-  const blob=new Blob([json],{type:'application/json;charset=utf-8'});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');
-  a.href=url; a.download='proyectos.json';
-  document.body.appendChild(a); a.click();
-  document.body.removeChild(a);
-  setTimeout(()=>URL.revokeObjectURL(url),2000);
-  toast('📦 proyectos.json descargado — súbalo a GitHub',4000);
-}
-
-/* ── AUTO-SYNC proyectos.json FROM GITHUB ────────────────────
-   Strategy:
-   - Always fetch proyectos.json (with cache:no-cache)
-   - Compare 'generated' timestamp with locally stored one
-   - If remote is newer → update automatically + notify user
-   - If user has no projects at all → load silently
-   ─────────────────────────────────────────────────────────── */
-async function fetchProyectosRemoto(){
-  if(!location.protocol.startsWith('http')) return;
-  try{
-    const res=await fetch('./proyectos.json',{cache:'no-cache'});
-    if(!res.ok) return; // file doesn't exist yet in repo — that's fine
-    const data=await res.json();
-    if(!data.projects||!data.projects.length) return;
-
-    const remoteTS  = data.generated||'';
-    const localTS   = S.proyectosTS||'';
-    const hasLocal  = S.allProjects.length>0;
-    const isNewer   = !localTS||(remoteTS>localTS);
-
-    if(!hasLocal){
-      // First run: load silently
-      S.allProjects  = data.projects;
-      S.proyectosTS  = remoteTS;
-      persist();
-      updateAdmStatus();
-      updateStorageInfo();
-      const sub=document.getElementById('xl-sub');
-      const zone=document.getElementById('adm-xl-zone');
-      if(sub) sub.textContent=`✅ ${data.projects.length} proyectos cargados`;
-      if(zone) zone.classList.add('loaded');
-      toast(`✅ ${data.projects.length} proyectos cargados automáticamente`,3000);
-
-    } else if(isNewer){
-      // Newer version available → auto-update without asking
-      const prev=S.allProjects.length;
-      S.allProjects  = data.projects;
-      S.proyectosTS  = remoteTS;
-      persist();
-      updateAdmStatus();
-      updateStorageInfo();
-      const sub=document.getElementById('xl-sub');
-      if(sub) sub.textContent=`✅ ${data.projects.length} proyectos cargados`;
-      if(data.projects.length!==prev){
-        toast(`🔄 Lista de proyectos actualizada: ${data.projects.length} proyectos`,4000);
-      }
-    }
-    // If same version → do nothing (user's local Excel is current)
-  }catch(e){
-    // Silently ignore network errors — app works offline
-  }
-}
-
-
-
-/* ── CERRAR APP ── */
-function closeApp(){
-  save();
-  const isStandalone=window.navigator.standalone||window.matchMedia('(display-mode:standalone)').matches;
-  const isMobile=/iphone|ipad|ipod|android/i.test(navigator.userAgent);
-  if(isStandalone&&isMobile){
-    toast('Presione el botón Home del dispositivo para salir',3000);
-  } else if(isStandalone){
-    if(confirm('¿Cerrar la aplicación?')) window.close();
-  } else {
-    goPortada();
-  }
-}
-
-/* ── PWA INSTALL BUTTON ── */
-let _installPrompt = null;
-
-window.addEventListener('beforeinstallprompt', (e) => {
-  e.preventDefault();
-  _installPrompt = e;
-  // Show install button
-  const btn = document.getElementById('btn-install');
-  if (btn) btn.style.display = 'flex';
-});
-
-window.addEventListener('appinstalled', () => {
-  _installPrompt = null;
-  const btn = document.getElementById('btn-install');
-  if (btn) btn.style.display = 'none';
-  toast('✅ Aplicación instalada correctamente', 3000);
-});
-
-function installApp() {
-  if (_installPrompt) {
-    _installPrompt.prompt();
-    _installPrompt.userChoice.then(result => {
-      if (result.outcome === 'accepted') {
-        toast('✅ Instalando...', 2000);
-      }
-      _installPrompt = null;
-      const btn = document.getElementById('btn-install');
-      if (btn) btn.style.display = 'none';
-    });
-  } else {
-    // Fallback instructions for iOS (Safari doesn't support beforeinstallprompt)
-    const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
-    if (ios) {
-      toast('En Safari: Compartir → Añadir a pantalla de inicio', 5000);
-    } else {
-      toast('Busque el botón de instalar en la barra del navegador', 4000);
-    }
-  }
-}
-
-
-/* ── AUTOSAVE on field blur ── */
-document.addEventListener('change', (e) => {
-  if (e.target.matches('[data-f]') || e.target.matches('[data-ik]')) {
-    // Debounce: save 1s after last change
-    clearTimeout(document._saveTimer);
-    document._saveTimer = setTimeout(() => {
-      if (S.openCodes.length) save();
-    }, 1000);
-  }
-});
-
-/* ── UTILS ───────────────────────────────────────── */
-function x(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-function td(){return new Date().toISOString().split('T')[0];}
-function toast(msg,ms=3000){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('on');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('on'),ms);}
-function showL(msg){document.getElementById('ltxt').textContent=msg;document.getElementById('loading').classList.add('on');}
-function hideL(){document.getElementById('loading').classList.remove('on');}
-</script>
-</body>
-</html>/* ── PRESUPUESTO PARSER — Excel ── */
-function parsePrespuesto(dataURL, fk){
-  try{
-    const b64=dataURL.split(',')[1];
-    const bin=atob(b64);
-    const arr=new Uint8Array(bin.length);
-    for(let i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
-    const wb=XLSX.read(arr,{type:'array'});
-
-    // Try each sheet, pick the one with most data
-    let bestRows=[];
+    let bestRows=[],bestScore=0;
     wb.SheetNames.forEach(shName=>{
       const ws=wb.Sheets[shName];
       const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
-      if(rows.length>bestRows.length) bestRows=rows;
+      let score=0;
+      rows.forEach(row=>{
+        const hasText=row.some(v=>String(v||'').length>4&&isNaN(toN(v)));
+        const hasAmt=row.some(v=>{const n=toN(v);return !isNaN(n)&&n>1000;});
+        if(hasText&&hasAmt) score++;
+      });
+      if(score>bestScore){bestScore=score;bestRows=rows;}
     });
-
+    // Fallback to largest sheet
+    if(!bestRows.length){
+      wb.SheetNames.forEach(shName=>{
+        const ws=wb.Sheets[shName];
+        const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+        if(rows.length>bestRows.length) bestRows=rows;
+      });
+    }
     if(!bestRows.length){toast('⚠️ Presupuesto vacío');return;}
+    toast(`📊 Procesando ${wb.SheetNames.length} hoja(s)...`,3000);
     extractAndFillInventory(bestRows, fk);
   }catch(err){
     console.error('Excel parse error:',err);
@@ -1985,7 +1239,6 @@ function parsePrespuesto(dataURL, fk){
   }
 }
 
-/* ── PRESUPUESTO PARSER — PDF (text extraction) ── */
 function parsePrespuestoPDF(dataURL, fk){
   toast('📄 Leyendo PDF de presupuesto...', 5000);
   // Extract text from PDF using basic parsing
@@ -2009,28 +1262,62 @@ function parsePrespuestoPDF(dataURL, fk){
 }
 
 function extractPDFText(bin){
-  // Extract text from PDF binary by finding text streams
+  // Strategy 1: Extract text from BT...ET blocks (uncompressed PDF text streams)
   const lines=[];
-  const str=bin; // binary string
-  // PDF text is in BT...ET blocks, or in stream blocks
-  // Simple approach: find all readable ASCII sequences >= 4 chars
-  let current='';
-  for(let i=0;i<str.length;i++){
-    const c=str.charCodeAt(i);
-    if(c>=32&&c<=126){
-      current+=str[i];
-    } else {
-      if(current.length>=3){
-        const trimmed=current.trim();
-        if(trimmed.length>=3) lines.push(trimmed);
+  const str=bin;
+
+  // Find all BT...ET blocks (PDF text blocks)
+  let i=0;
+  while(i<str.length-2){
+    // Look for BT marker
+    if(str[i]==='B'&&str[i+1]==='T'&&(i===0||str[i-1]==='
+'||str[i-1]===' ')){
+      const etIdx=str.indexOf('ET',i+2);
+      if(etIdx>0&&etIdx-i<50000){
+        const block=str.slice(i+2,etIdx);
+        // Extract text from Tj, TJ, ' operators
+        // Tj: (text)Tj  or <hex>Tj
+        const tjMatches=block.match(/\(([^)]+)\)\s*Tj/g)||[];
+        tjMatches.forEach(m=>{
+          const txt=m.replace(/\(([^)]+)\)\s*Tj/,'$1').trim();
+          if(txt.length>2) lines.push(txt);
+        });
+        // TJ: [(text) spacing (text)]TJ
+        const tjArrMatches=block.match(/\[([^\]]+)\]\s*TJ/g)||[];
+        tjArrMatches.forEach(m=>{
+          const parts=m.match(/\(([^)]*)\)/g)||[];
+          const txt=parts.map(p=>p.slice(1,-1)).join('').trim();
+          if(txt.length>2) lines.push(txt);
+        });
+        i=etIdx+2;
+        continue;
       }
-      current='';
     }
+    i++;
   }
-  if(current.trim().length>=3) lines.push(current.trim());
-  // Filter: keep only lines that could be budget items
-  // (contain letters and possibly numbers)
-  return lines.filter(l=>/[a-záéíóúñüA-ZÁÉÍÓÚÑÜ]/.test(l)&&l.length>=4);
+
+  // Strategy 2: If BT/ET found nothing useful, fall back to ASCII extraction
+  if(lines.filter(l=>/[a-zA-ZáéíóúñÁÉÍÓÚÑ]/.test(l)).length<5){
+    let current='';
+    for(let j=0;j<str.length;j++){
+      const c=str.charCodeAt(j);
+      if(c>=32&&c<=126){current+=str[j];}
+      else{
+        if(current.length>=4){
+          const t=current.trim();
+          if(t.length>=4&&/[a-zA-Z]/.test(t)) lines.push(t);
+        }
+        current='';
+      }
+    }
+    if(current.trim().length>=4) lines.push(current.trim());
+  }
+
+  // Filter: must contain Spanish letters and be meaningful
+  return [...new Set(lines)]
+    .filter(l=>/[a-záéíóúñüA-ZÁÉÍÓÚÑÜ]{3,}/.test(l)&&l.length>=4)
+    .map(l=>l.replace(/\n/g,' ').replace(/\s+/g,' ').trim())
+    .filter(l=>l.length>=4);
 }
 
 /* ── CORE: extract items from rows (used by both Excel and PDF parsers) ── */
@@ -2513,6 +1800,7 @@ function td(){return new Date().toISOString().split('T')[0];}
 function toast(msg,ms=3000){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('on');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('on'),ms);}
 function showL(msg){document.getElementById('ltxt').textContent=msg;document.getElementById('loading').classList.add('on');}
 function hideL(){document.getElementById('loading').classList.remove('on');}
+</script>
 
 </body>
 </html>
