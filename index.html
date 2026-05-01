@@ -687,40 +687,47 @@ function loadFromDB(){
 }
 
 addEventListener('DOMContentLoaded',async ()=>{
-  try{await openDB();}catch(e){console.warn('IDB unavailable, falling back to localStorage');}
-  await loadFromDB();
-  restoreUI();
-  await fetchProyectosRemoto();
+  try{
+    try{await openDB();}catch(e){console.warn('IDB unavailable');}
+    try{await loadFromDB();}catch(e){console.warn('loadFromDB error:',e);}
+    restoreUI();
+    fetchProyectosRemoto().catch(e=>console.warn('fetch remote:',e));
+  }catch(e){
+    console.error('Init error:',e);
+    // Fallback: show portada so buttons work even if data fails
+    try{showPortada();}catch(_){}
+  }
 });
 
 function restoreUI(){
-  if(S.allProjects.length){
-    // Update admin panel xl zone if it exists
-    const zone=document.getElementById('adm-xl-zone');
-    const sub=document.getElementById('xl-sub');
-    if(zone) zone.classList.add('loaded');
-    if(sub) sub.textContent=`✅ ${S.allProjects.length} proyectos cargados`;
+  try{
+    if(S.allProjects&&S.allProjects.length){
+      const zone=document.getElementById('adm-xl-zone');
+      const sub=document.getElementById('xl-sub');
+      if(zone) zone.classList.add('loaded');
+      if(sub) sub.textContent=`✅ ${S.allProjects.length} proyectos cargados`;
+    }
+    if(S.openCodes&&S.openCodes.length) renderCurrent();
+    else showPortada();
+    try{updateStorageInfo();}catch(e){}
+  }catch(e){
+    console.error('restoreUI error:',e);
+    showPortada();
   }
-  if(S.openCodes.length) renderCurrent();
-  else showPortada();
-  updateStorageInfo();
 }
 
 function updateStorageInfo(){
-  const el=document.getElementById('storage-info');
-  if(!el)return;
-  // Estimate current data size
   try{
-    const json=JSON.stringify(S);
-    const kb=Math.round(json.length*0.75/1024);
+    const el=document.getElementById('storage-info');
+    if(!el)return;
+    const photoCount=Object.values(S.ph||{}).reduce((a,arr)=>a+(arr?.length||0),0);
+    const kb=Math.round(JSON.stringify(S).length*0.75/1024);
     const mb=(kb/1024).toFixed(1);
-    const photoCount=Object.values(S.ph).reduce((a,arr)=>a+(arr?.length||0),0);
-    el.textContent=`Almacenado: ${mb} MB · ${photoCount} fotos · IndexedDB (capacidad ~500 MB)`;
+    el.textContent=`Almacenado: ${mb} MB · ${photoCount} fotos`;
     el.style.color=kb>400000?'#c0392b':kb>200000?'#b86800':'#2a6a3a';
-  }catch(e){el.textContent='';}
-  // Refresh admin panel if open
-  const admEl=document.getElementById('admin-modal');
-  if(admEl&&admEl.classList.contains('on')) updateAdmStatus();
+    const admEl=document.getElementById('admin-modal');
+    if(admEl&&admEl.classList.contains('on')) updateAdmStatus();
+  }catch(e){}
 }
 
 /* ── PORTADA ──────────────────────────────────────── */
