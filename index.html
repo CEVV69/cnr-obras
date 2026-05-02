@@ -694,11 +694,9 @@ addEventListener('DOMContentLoaded',async ()=>{
 });
 
 function restoreUI(){
-  if(S.allProjects&&S.allProjects.length){
-    const _z=document.getElementById('adm-xl-zone');
-    const _s=document.getElementById('xl-sub');
-    if(_z)_z.classList.add('loaded');
-    if(_s)_s.textContent=`✅ ${S.allProjects.length} proyectos cargados`;
+  if(S.allProjects.length){
+    const _z=document.getElementById('adm-xl-zone');if(_z)_z.classList.add('loaded');
+    const _s=document.getElementById('xl-sub');if(_s)_s.textContent=`✅ ${S.allProjects.length} proyectos cargados`;
   }
   if(S.openCodes.length) renderCurrent();
   else showPortada();
@@ -757,10 +755,8 @@ function loadExcel(e){
       S.allProjects=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''});
       S.proyectosTS=''; // reset so GitHub version won't be blocked by old ts
       persist();hideL();
-      const _lz=document.getElementById('adm-xl-zone');
-      if(_lz)_lz.classList.add('loaded');
-      const _ls=document.getElementById('xl-sub');
-      if(_ls)_ls.textContent=`✅ ${S.allProjects.length} proyectos cargados`;
+      const _lz=document.getElementById('adm-xl-zone');if(_lz)_lz.classList.add('loaded');
+      const _ls=document.getElementById('xl-sub');if(_ls)_ls.textContent=`✅ ${S.allProjects.length} proyectos cargados`;
       toast(`✅ ${S.allProjects.length} proyectos listos`);
     }catch(err){hideL();toast('❌ Error al leer Excel');}
   };
@@ -1186,183 +1182,103 @@ function upFile(fk,sl,el){
 function viFile(fk){const f=S.files[fk];if(!f)return;const w=window.open();w.document.write(`<iframe src="${f.data}" style="width:100%;height:100%;border:none"></iframe>`);}
 
 /* ── PRESUPUESTO PARSER — pre-fill inventory ≥5% del total ── */
-function parsePrespuesto(dataURL, fk){
+function parsePrespuesto(dataURL,fk){
   try{
-    const b64=dataURL.split(',')[1];
-    const bin=atob(b64);
-    const arr=new Uint8Array(bin.length);
-    for(let i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
+    const b64=dataURL.split(',')[1];const bin=atob(b64);
+    const arr=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)arr[i]=bin.charCodeAt(i);
     const wb=XLSX.read(arr,{type:'array'});
-    const ws=wb.Sheets[wb.SheetNames[0]];
-    const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
-    if(!rows.length){toast('⚠️ Presupuesto vacío');return;}
-
-    /* ── helpers ── */
-    const toNum=v=>{
-      let s=String(v||'').replace(/[$\s%]/g,'').trim();
-      if(!s)return NaN;
-      // Chilean: 1.234.567,89 → 1234567.89
-      if(s.includes(',')&&s.includes('.')){s=s.replace(/\./g,'').replace(',','.');}
-      else if(s.includes('.')&&(s.match(/\./g)||[]).length>1){s=s.replace(/\./g,'');}
-      else if(s.includes(',')&&!s.includes('.')){s=s.replace(',','.');}
-      return parseFloat(s);
-    };
-    const clean=v=>String(v||'').trim();
-    const isDesc=v=>{const s=clean(v);return s.length>3&&isNaN(toNum(s))&&!/^\d+$/.test(s);};
-    const lc=v=>String(v||'').toLowerCase();
-
-    /* ── find header row (first row with a description-like AND amount-like header) ── */
-    let headerRow=-1,descCol=-1,amtCol=-1,unitCol=-1,cantCol=-1;
-
-    // Scan first 15 rows for a row that looks like a table header
-    for(let r=0;r<Math.min(15,rows.length)&&headerRow<0;r++){
-      const row=rows[r];
-      let dC=-1,aC=-1,uC=-1,qC=-1;
-      for(let c=0;c<row.length;c++){
-        const v=lc(row[c]);
-        if(dC<0&&(v.includes('descrip')||v.includes('partida')||v.includes('item')||v.includes('detalle')||v.includes('concepto')||v.includes('nombre')||v.includes('material')||v.includes('elemento')))dC=c;
-        if(aC<0&&(v.includes('total')||v.includes('monto')||v.includes('precio')||v.includes('valor')||v.includes('importe')))aC=c;
-        if(uC<0&&(v.includes('unidad')||v.includes('ud.')||v==='un'||v==='u'))uC=c;
-        if(qC<0&&(v.includes('cant')||v.includes('ctd')||v==='n°'||v.includes('cantidad')))qC=c;
-      }
-      if(dC>=0&&aC>=0){headerRow=r;descCol=dC;amtCol=aC;unitCol=uC;cantCol=qC;}
-    }
-
-    /* ── fallback: find columns by scanning data content ── */
-    if(headerRow<0){
-      // Find rightmost column with mostly positive numbers → amount column
-      const scanRows=rows.slice(0,Math.min(50,rows.length));
-      let bestAmt=0,bestAC=0;
-      for(let c=0;c<20;c++){
-        let hits=0;
-        scanRows.forEach(r=>{const n=toNum(r[c]);if(!isNaN(n)&&n>100)hits++;});
-        if(hits>bestAmt){bestAmt=hits;bestAC=c;}
-      }
-      amtCol=bestAC;
-      // Find longest-text column to the left of amtCol → description column
-      let bestDesc=0,bestDC=0;
-      for(let c=0;c<amtCol;c++){
-        let len=0;
-        scanRows.forEach(r=>{len+=clean(r[c]).length;});
-        if(len>bestDesc){bestDesc=len;bestDC=c;}
-      }
-      descCol=bestDC;
-      headerRow=0;
-    }
-
-    /* ── find TOTAL row (last row containing "total" keyword with a big number) ── */
-    let totalRow=rows.length;
-    for(let r=rows.length-1;r>=headerRow+1;r--){
-      const row=rows[r];
-      const hasTotal=row.some(v=>/(total|gran\s*total|monto\s*total)/i.test(String(v||'')));
-      if(hasTotal){totalRow=r;break;}
-    }
-
-    /* ── collect items ── */
-    const allItems=[];
-    let grandTotal=0;
-    for(let r=headerRow+1;r<totalRow;r++){
-      const row=rows[r];if(!row||!row.length)continue;
-      const desc=clean(row[descCol]);
-      if(!isDesc(desc))continue; // skip rows that are numbers, subtitles of just separators
-      const amt=toNum(row[amtCol]);
-      if(isNaN(amt)||amt<=0)continue;
-      const unit=unitCol>=0?clean(row[unitCol]):'';
-      const cant=cantCol>=0?clean(row[cantCol]):'1';
-      allItems.push({desc,amt,unit,cant});
-      grandTotal+=amt;
-    }
-
-    /* ── if grand total wasn't found from summing, try to read it from the total row ── */
-    if(grandTotal<=0&&totalRow<rows.length){
-      const tRow=rows[totalRow];
-      for(let c=amtCol;c<tRow.length;c++){
-        const n=toNum(tRow[c]);
-        if(!isNaN(n)&&n>0){grandTotal=n;break;}
-      }
-      // re-collect items without grand total filter
-      if(grandTotal>0&&allItems.length===0){
-        for(let r=headerRow+1;r<totalRow;r++){
-          const row=rows[r];if(!row||!row.length)continue;
-          const desc=clean(row[descCol]);
-          if(!isDesc(desc))continue;
-          const amt=toNum(row[amtCol]);
-          if(isNaN(amt)||amt<=0)continue;
-          const unit=unitCol>=0?clean(row[unitCol]):'';
-          const cant=cantCol>=0?clean(row[cantCol]):'1';
-          allItems.push({desc,amt,unit,cant});
-        }
-      }
-    }
-
-    if(grandTotal<=0||allItems.length===0){
-      toast('⚠️ No se pudo leer el presupuesto. Verifique el formato del Excel.');
-      return;
-    }
-
-    /* ── filter ≥5% ; if none qualify use top items by amount (up to 10) ── */
-    const threshold=0.05*grandTotal;
-    let significant=allItems.filter(it=>it.amt>=threshold);
-    if(significant.length===0){
-      // no item reaches 5% — take items that together represent the top 80% of cost
-      const sorted=[...allItems].sort((a,b)=>b.amt-a.amt);
-      let acc=0;
-      for(const it of sorted){
-        significant.push(it);
-        acc+=it.amt;
-        if(acc/grandTotal>=0.80)break;
-      }
-    }
-
-    /* ── determine project/module and build inventory rows ── */
-    const cod=S.openCodes[S.ci];if(!cod)return;
-    const p=S.allProjects.find(r=>r['Código Proyecto']===cod);
-    const isT=p?String(p['Tipo Obra']||'').toLowerCase().includes('tecnif'):true;
-    const ik=`inv_${cod}_${S.mod}`;
-
-    const newItems=significant.map(it=>{
-      const pct=((it.amt/grandTotal)*100).toFixed(1);
-      if(isT){
-        // Tecnificación: Elemento, Modelo, Marca, Cantidad, N° Serie
-        return {
-          elem: it.desc.substring(0,80),
-          mod:  '',
-          marc: '',
-          cant: it.cant||'1',
-          ser:  '',
-          _pct: pct
-        };
-      } else {
-        // Obras Civiles: Cantidad, Tipo Obra, Dimensiones, Coordenadas, Obs.técnicas
-        return {
-          cant: it.cant||'1',
-          tipo: it.desc.substring(0,80),
-          dim:  it.unit?`Unidad: ${it.unit}`:'',
-          coo:  '',
-          obs:  `${pct}% presupuesto`,
-          _pct: pct
-        };
-      }
+    const toN=v=>{let s=String(v||'').replace(/[$\s]/g,'').replace(/\./g,'').replace(',','.');return parseFloat(s);};
+    let bestRows=[],bestScore=0;
+    wb.SheetNames.forEach(sh=>{
+      const rows=XLSX.utils.sheet_to_json(wb.Sheets[sh],{header:1,defval:''});
+      let score=0;
+      rows.forEach(row=>{
+        if(row.some(v=>String(v||'').length>4&&isNaN(toN(v)))&&row.some(v=>{const n=toN(v);return !isNaN(n)&&n>1000;}))score++;
+      });
+      if(score>bestScore){bestScore=score;bestRows=rows;}
     });
-
-    /* ── merge or replace ── */
-    const existing=S.inv[ik]||[];
-    const isEmpty=existing.length===0||(existing.length===1&&!existing[0].elem&&!existing[0].tipo);
-    if(!isEmpty){
-      if(!confirm(`Se encontraron ${newItems.length} ítems con ≥5% del presupuesto (total: $${Math.round(grandTotal).toLocaleString('es-CL')}).\n\n¿Reemplazar el inventario actual?\n[OK]=Reemplazar · [Cancelar]=Mantener actual`)) return;
-    }
-    S.inv[ik]=newItems;
-    persist();
-    renderCurrent();
-    toast(`✅ ${newItems.length} ítems cargados desde presupuesto (total $${Math.round(grandTotal).toLocaleString('es-CL')})`);
-
-  }catch(err){
-    console.error('Presupuesto parse error:',err);
-    toast('⚠️ Error al procesar el presupuesto. Verifique que sea un Excel válido.');
-  }
+    if(!bestRows.length)wb.SheetNames.forEach(sh=>{
+      const rows=XLSX.utils.sheet_to_json(wb.Sheets[sh],{header:1,defval:''});
+      if(rows.length>bestRows.length)bestRows=rows;
+    });
+    if(!bestRows.length){toast('⚠️ Presupuesto vacío');return;}
+    toast('📊 Analizando presupuesto...',3000);
+    extractAndFillInventory(bestRows,fk);
+  }catch(e){console.error(e);toast('⚠️ Error al leer Excel de presupuesto');}
 }
 
-/* ── GPS ─────────────────────────────────────────── */
+function extractAndFillInventory(rows,fk){
+  const toN=v=>{
+    let s=String(v||'').replace(/[$\s%°]/g,'').trim();
+    if(!s||s==='-')return NaN;
+    const dots=(s.match(/\./g)||[]).length,commas=(s.match(/,/g)||[]).length;
+    if(commas>0&&dots>0)s=s.replace(/\./g,'').replace(',','.');
+    else if(dots>1)s=s.replace(/\./g,'');
+    else if(commas>0&&!dots)s=s.replace(',','.');
+    return parseFloat(s);
+  };
+  const clean=v=>String(v||'').trim().replace(/\s+/g,' ');
+  const isDesc=v=>{const s=clean(v);return s.length>3&&isNaN(toN(v))&&/[a-zA-ZÀ-ÿ]/.test(s);};
+  const lc=v=>String(v||'').toLowerCase();
+  const descKW=['descrip','partida','item','detalle','concepto','nombre','material','elemento','obra','actividad'];
+  const amtKW=['total','monto','precio','valor','importe','costo'];
+  let headerRow=-1,descCol=-1,amtCol=-1,cantCol=-1,unitCol=-1;
+  for(let r=0;r<Math.min(20,rows.length)&&headerRow<0;r++){
+    const row=rows[r];let dC=-1,aC=-1,cC=-1,uC=-1;
+    for(let c=0;c<row.length;c++){
+      const v=lc(row[c]);
+      if(dC<0&&descKW.some(k=>v.includes(k)))dC=c;
+      if(aC<0&&amtKW.some(k=>v.includes(k)))aC=c;
+      if(cC<0&&(v.includes('cant')||v==='n°'||v.includes('cantidad')))cC=c;
+      if(uC<0&&(v.includes('unidad')||v==='ud'||v==='un'))uC=c;
+    }
+    if(dC>=0&&aC>=0){headerRow=r;descCol=dC;amtCol=aC;cantCol=cC;unitCol=uC;}
+  }
+  if(headerRow<0||descCol<0||amtCol<0){
+    let bestA=0;
+    for(let c=0;c<20;c++){let h=0;rows.slice(0,50).forEach(r=>{const n=toN(r[c]);if(!isNaN(n)&&n>1000)h++;});if(h>bestA){bestA=h;amtCol=c;}}
+    let bestD=0;
+    for(let c=0;c<Math.max(1,amtCol);c++){let l=0;rows.slice(0,50).forEach(r=>{l+=clean(r[c]).length;});if(l>bestD){bestD=l;descCol=c;}}
+    headerRow=0;
+  }
+  let totalRow=rows.length;
+  const totalKW=['total general','gran total','monto total','total obras','total proyecto'];
+  for(let r=rows.length-1;r>headerRow+2;r--){
+    const rt=rows[r].map(v=>lc(v)).join(' ');
+    if(totalKW.some(k=>rt.includes(k))){totalRow=r;break;}
+  }
+  const items=[];let grandTotal=0;
+  for(let r=headerRow+1;r<totalRow;r++){
+    const row=rows[r];if(!row||!row.length)continue;
+    const desc=clean(row[descCol]||'');if(!isDesc(desc))continue;
+    let amt=toN(row[amtCol]);
+    if(isNaN(amt)||amt<=0){for(let c=Math.max(0,amtCol-2);c<Math.min(row.length,amtCol+4);c++){const n=toN(row[c]);if(!isNaN(n)&&n>0){amt=n;break;}}}
+    if(isNaN(amt)||amt<=0)continue;
+    const unit=unitCol>=0?clean(row[unitCol]||''):'';
+    const cant=cantCol>=0?clean(row[cantCol]||''):'1';
+    items.push({desc,amt,unit,cant:cant||'1'});
+    grandTotal+=amt;
+  }
+  if(grandTotal<=0||!items.length){toast('⚠️ No se encontraron ítems con montos');return;}
+  const thr=0.05*grandTotal;
+  let sig=items.filter(it=>it.amt>=thr);
+  if(!sig.length){const s=[...items].sort((a,b)=>b.amt-a.amt);let acc=0;for(const it of s){sig.push(it);acc+=it.amt;if(acc/grandTotal>=0.80)break;}}
+  const cod=S.openCodes[S.ci];if(!cod)return;
+  const p=S.allProjects.find(r=>r['Código Proyecto']===cod);
+  const isT=p?String(p['Tipo Obra']||'').toLowerCase().includes('tecnif'):true;
+  const ik=`inv_${cod}_${S.mod}`;
+  const newItems=sig.map(it=>{
+    const pct=((it.amt/grandTotal)*100).toFixed(1);
+    return isT?{elem:it.desc.substring(0,80),mod:'',marc:'',cant:it.cant,ser:'',_pct:pct}
+              :{cant:it.cant,tipo:it.desc.substring(0,80),dim:it.unit?`Unidad: ${it.unit}`:'',coo:'',obs:`${pct}% ppto`,_pct:pct};
+  });
+  const ex=S.inv[ik]||[];
+  const isEmpty=!ex.length||(ex.length===1&&!ex[0].elem&&!ex[0].tipo);
+  if(!isEmpty&&!confirm(`Se encontraron ${newItems.length} ítems.\n¿Reemplazar inventario actual?`))return;
+  S.inv[ik]=newItems;persist();renderCurrent();
+  toast(`✅ ${newItems.length} ítems cargados (total $${Math.round(grandTotal).toLocaleString('es-CL')})`);
+}
+
 function oGPS(lat,lng,norte,este){
   // Strategy 1: use LatitudConvertida/LongitudConvertida if valid WGS84
   const la=parseFloat(lat), lo=parseFloat(lng);
