@@ -1780,9 +1780,8 @@ function td(){return new Date().toISOString().split('T')[0];}
 function toast(msg,ms=3000){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('on');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('on'),ms);}
 function showL(msg){document.getElementById('ltxt').textContent=msg;document.getElementById('loading').classList.add('on');}
 function hideL(){document.getElementById('loading').classList.remove('on');}
-</script>
-</body>
-</html>/* ── PRESUPUESTO PARSER — Excel ── */
+
+/* ── PRESUPUESTO PARSER — Excel ── */
 function parsePrespuesto(dataURL, fk){
   try{
     const b64=dataURL.split(',')[1];
@@ -1972,7 +1971,7 @@ function extractAndFillInventory(rows, fk){
   // Also try to read explicit total row
   if(totalRow<rows.length){
     const tRow=rows[totalRow];
-    for(let c=row=>row.length-1;c>=0;c--){
+    for(let c=tRow.length-1;c>=0;c--){
       const n=toNum(tRow[c]);
       if(!isNaN(n)&&n>grandTotal*0.5){grandTotal=Math.max(grandTotal,n);break;}
     }
@@ -2336,5 +2335,6 @@ function toast(msg,ms=3000){const t=document.getElementById('toast');t.textConte
 function showL(msg){document.getElementById('ltxt').textContent=msg;document.getElementById('loading').classList.add('on');}
 function hideL(){document.getElementById('loading').classList.remove('on');}
 
+</script>
 </body>
 </html>
