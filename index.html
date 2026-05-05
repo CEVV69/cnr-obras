@@ -721,10 +721,16 @@ function updateStorageInfo(){
 
 /* ── PORTADA ──────────────────────────────────────── */
 function showPortada(){
-  document.getElementById('screen-portada').style.display='flex';
-  document.getElementById('screen-form').style.display='none';
-  document.getElementById('recbar').style.display='none';
-  document.getElementById('hdr-title').textContent='ACTA DE INVENTARIO DE EQUIPOS Y ELEMENTOS DE RIEGO';
+  console.log('[showPortada] showing portada screen');
+  const el1=document.getElementById('screen-portada');
+  const el2=document.getElementById('screen-form');
+  const el3=document.getElementById('recbar');
+  const el4=document.getElementById('hdr-title');
+  console.log('[showPortada] elements found: portada='+!!el1+' form='+!!el2+' recbar='+!!el3+' title='+!!el4);
+  if(el1)el1.style.display='flex';
+  if(el2)el2.style.display='none';
+  if(el3)el3.style.display='none';
+  if(el4)el4.textContent='ACTA DE INVENTARIO DE EQUIPOS Y ELEMENTOS DE RIEGO';
 }
 
 function goPortada(){
@@ -738,10 +744,22 @@ function goPortada(){
 }
 
 function goMod(m){
-  if(!S.allProjects.length){openAdmin();toast('⚠️ Primero cargue el Excel de proyectos',4000);return;}
+  console.log('[goMod] called with m='+m+' allProjects.length='+S.allProjects.length+' openCodes.length='+S.openCodes.length);
+  if(!S.allProjects.length){
+    console.log('[goMod] no projects, opening admin');
+    openAdmin();
+    toast('⚠️ Primero cargue el Excel de proyectos',4000);
+    return;
+  }
+  console.log('[goMod] setting S.mod='+m);
   S.mod=m;
-  if(S.openCodes.length) renderCurrent();
-  else openSearch();
+  if(S.openCodes.length){
+    console.log('[goMod] calling renderCurrent');
+    renderCurrent();
+  } else {
+    console.log('[goMod] calling openSearch');
+    openSearch();
+  }
 }
 
 /* ── EXCEL ───────────────────────────────────────── */
@@ -1575,8 +1593,15 @@ function importJSON(event){
 
 /* ── ADMIN MODAL ─────────────────────────────────── */
 function openAdmin(){
+  console.log('[openAdmin] opening admin modal');
   updateAdmStatus();
-  document.getElementById('admin-modal').classList.add('on');
+  const el=document.getElementById('admin-modal');
+  if(el){
+    el.classList.add('on');
+    console.log('[openAdmin] admin-modal opened');
+  } else {
+    console.log('[openAdmin] ERROR: admin-modal element not found');
+  }
 }
 function closeAdmin(){document.getElementById('admin-modal').classList.remove('on');}
 
