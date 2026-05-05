@@ -430,20 +430,20 @@ body{background:#b8bec8}
 
   <!-- HEADER -->
   <div id="hdr">
-    <div class="pwr" onclick="closeApp()" title="Cerrar">✕</div>
     <div class="pwr" onclick="goPortada()" title="Volver al inicio" style="font-size:16px">🏠</div>
-    <div class="logo"><img src="icon-192.png" alt="CNR"></div>
     <div class="htitle">
       <div class="t1" id="hdr-title" style="display:none"></div>
       <div class="t2" id="hdr-subtitle" style="display:none"></div>
     </div>
     <div class="hicons">
+      <div class="hico hico-export" id="btn-export-proj" onclick="exportProject()" title="Exportar proyecto" style="display:none">💾</div>
+      <div class="hico hico-import" id="btn-import-proj" onclick="importProject()" title="Importar proyecto" style="display:none">📂</div>
       <div class="hico" onclick="openInfo()" title="Más información">ℹ️</div>
       <div class="hico" onclick="doEmail()" title="Enviar por correo">✉️</div>
       <div class="hico" onclick="doPDF(false)" title="Vista previa">📄</div>
       <div class="hico" onclick="doPDF(true)" title="Imprimir">🖨️</div>
       <div class="hico hico-install" id="btn-install" onclick="installApp()" title="Instalar aplicación" style="display:none">📲</div>
-      <div class="hico" onclick="openAdmin()" title="Configuración">⚙️</div>
+      <div class="hico" onclick="openAdmin()" id="btn-config-header" title="Configuración" style="display:none">⚙️</div>
     </div>
   </div>
 
@@ -732,11 +732,17 @@ function showPortada(){
   const el2=document.getElementById('screen-form');
   const el3=document.getElementById('recbar');
   const el4=document.getElementById('hdr-title');
-  console.log('[showPortada] elements found: portada='+!!el1+' form='+!!el2+' recbar='+!!el3+' title='+!!el4);
+  const btnCfg=document.getElementById('btn-config-header');
+  const btnExp=document.getElementById('btn-export-proj');
+  const btnImp=document.getElementById('btn-import-proj');
+  
   if(el1)el1.style.display='flex';
   if(el2)el2.style.display='none';
   if(el3)el3.style.display='none';
   if(el4)el4.textContent='ACTA DE INVENTARIO DE EQUIPOS Y ELEMENTOS DE RIEGO';
+  if(btnCfg)btnCfg.style.display='block';
+  if(btnExp)btnExp.style.display='none';
+  if(btnImp)btnImp.style.display='none';
 }
 
 function goPortada(){
@@ -855,6 +861,14 @@ function renderCurrent(){
   document.getElementById('rcount').textContent=`${S.ci+1} de ${total}`;
   document.getElementById('mod-label').textContent=ML[S.mod];
   document.getElementById('sep-sel').value=rec['_sep']||'No';
+  
+  // Header buttons: hide config, show export/import in form screens
+  const btnCfg=document.getElementById('btn-config-header');
+  const btnExp=document.getElementById('btn-export-proj');
+  const btnImp=document.getElementById('btn-import-proj');
+  if(btnCfg)btnCfg.style.display='none';
+  if(btnExp)btnExp.style.display='block';
+  if(btnImp)btnImp.style.display='block';
 
   // Bottom nav
   document.getElementById('nav-num').textContent=S.ci+1;
@@ -1741,6 +1755,61 @@ async function fetchProyectosRemoto(){
 }
 
 
+
+/* ── EXPORT/IMPORT PROJECT ONLY ──────────────────── */
+function exportProject(){
+  save();
+  const cod=S.openCodes[S.ci];
+  if(!cod){toast('⚠️ Sin proyecto seleccionado');return;}
+  const p=S.allProjects.find(r=>r['Código Proyecto']===cod);
+  if(!p){toast('⚠️ Proyecto no encontrado');return;}
+  const payload={version:2,exported: new Date().toISOString(),deviceNote:'Exportado desde CNR Ñuble PWA (proyecto único)',allProjects: [p],openCodes: [cod],ci: 0,mod: S.mod,rec: Object.fromEntries(Object.entries(S.rec).filter(([k])=>k.startsWith('r_'+cod))),inv: Object.fromEntries(Object.entries(S.inv).filter(([k])=>k.startsWith('inv_'+cod))),ph: Object.fromEntries(Object.entries(S.ph).filter(([k])=>k.startsWith('ph_'+cod))),files: Object.fromEntries(Object.entries(S.files).filter(([k])=>k.startsWith('f_'+cod))),sigs: Object.fromEntries(Object.entries(S.sigs).filter(([k])=>k.startsWith('sig_'+cod)))};
+  const json=JSON.stringify(payload,null,2);
+  const blob=new Blob([json],{type:'application/json;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  const ts=new Date().toISOString().slice(0,10);
+  a.href=url;
+  a.download=`CNR_proyecto_${cod}_${ts}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url),2000);
+  toast('💾 Proyecto exportado',3000);
+}
+function importProject(){
+  const inp=document.createElement('input');
+  inp.type='file';
+  inp.accept='.json';
+  inp.onchange=e=>{
+    const file=e.target.files[0];
+    if(!file)return;
+    const fr=new FileReader();
+    fr.onload=ev=>{
+      try{
+        const data=JSON.parse(ev.target.result);
+        if(!data.allProjects||!data.allProjects.length){toast('⚠️ Archivo inválido');return;}
+        let imported=0;
+        for(const proj of data.allProjects){
+          const cod=proj['Código Proyecto'];
+          const exists=S.allProjects.find(p=>p['Código Proyecto']===cod);
+          if(exists){if(confirm(`Proyecto ${cod} ya existe.\n¿Reemplazarlo?`)){const idx=S.allProjects.findIndex(p=>p['Código Proyecto']===cod);S.allProjects[idx]=proj;imported++;}}
+          else{S.allProjects.push(proj);imported++;}
+        }
+        Object.assign(S.rec,data.rec||{});
+        Object.assign(S.inv,data.inv||{});
+        Object.assign(S.ph,data.ph||{});
+        Object.assign(S.files,data.files||{});
+        Object.assign(S.sigs,data.sigs||{});
+        persist();
+        toast(`✅ ${imported} proyecto(s) importado(s)`,3000);
+        renderCurrent();
+      }catch(err){console.error('Import error:',err);toast('⚠️ Error al importar');}
+    };
+    fr.readAsText(file);
+  };
+  inp.click();
+}
 
 /* ── CERRAR APP ── */
 function closeApp(){
