@@ -1917,43 +1917,59 @@ function extractAndFillInventory(rows, fk){
   const cantKW=['cant','cantidad','ctd','num','n°','no.','unidades'];
   const unitKW=['unidad','ud.','un.','u.m.','medida'];
 
+  // Phase 1a: look for header row with multiple matching keywords
   for(let r=0;r<Math.min(30,rows.length)&&headerRow<0;r++){
     const row=rows[r]||[];
+    if(row.length<2) continue; // header must have at least 2 columns
+    
+    let kwMatches=0; // count how many keywords match in this row
     let dC=-1,aC=-1,cC=-1,uC=-1;
+    
     for(let c=0;c<row.length;c++){
       const v=norm(row[c]);
-      if(dC<0&&descKW.some(k=>v.includes(k))) dC=c;
-      if(aC<0&&amtKW.some(k=>v.includes(k))) aC=c;
-      if(cC<0&&cantKW.some(k=>v.includes(k))) cC=c;
-      if(uC<0&&unitKW.some(k=>v.includes(k))) uC=c;
+      if(!v||v.length<2) continue;
+      
+      let matched=false;
+      if(dC<0&&descKW.some(k=>v.includes(k))){dC=c;kwMatches++;matched=true;}
+      if(aC<0&&amtKW.some(k=>v.includes(k))){aC=c;kwMatches++;matched=true;}
+      if(cC<0&&cantKW.some(k=>v.includes(k))){cC=c;kwMatches++;matched=true;}
+      if(uC<0&&unitKW.some(k=>v.includes(k))){uC=c;kwMatches++;matched=true;}
     }
-    if(dC>=0&&aC>=0){
+    
+    // Accept as header only if: dC and aC found AND different columns AND at least 2 keyword matches
+    if(dC>=0&&aC>=0&&dC!==aC&&kwMatches>=2){
       headerRow=r; descCol=dC; amtCol=aC;
       cantCol=cC>=0?cC:-1; unitCol=uC>=0?uC:-1;
+      console.log('[parsePpto] Phase1 header detected: row='+r+' desc_col='+dC+' amt_col='+aC+' kwMatches='+kwMatches);
     }
   }
 
-  /* Phase 2: fallback heuristic */
+  /* Phase 2: fallback heuristic if phase 1 failed */
   if(headerRow<0||descCol<0||amtCol<0){
+    console.log('[parsePpto] Phase1 failed, running Phase2 fallback. rows='+rows.length);
     const scanN=Math.min(80,rows.length);
     const maxCols=rows.slice(0,scanN).reduce((m,r)=>Math.max(m,(r||[]).length),0);
-    let bestAmtScore=0;
+    console.log('[parsePpto] Phase2: maxCols='+maxCols+' scanRows='+scanN);
+    
+    // Find amount column (rightmost with most positive numbers)
+    let bestAmtScore=-1;
     for(let c=0;c<maxCols;c++){
       let hits=0;
       for(let r=0;r<scanN;r++){const n=toNum((rows[r]||[])[c]);if(!isNaN(n)&&n>0)hits++;}
-      const score=hits+(c*0.1);
+      const score=hits+(c*0.05); // slight bias to right
       if(score>bestAmtScore){bestAmtScore=score;amtCol=c;}
     }
+    
+    // Find desc column (leftmost with longest text that's not numeric)
     let bestLen=0;
     for(let c=0;c<Math.max(1,amtCol);c++){
-      let len=0;
-      for(let r=0;r<scanN;r++){const v=clean((rows[r]||[])[c]);if(v.length>2&&isNaN(toNum(v)))len+=v.length;}
-      if(len>bestLen){bestLen=len;descCol=c;}
+      let len=0,cnt=0;
+      for(let r=0;r<scanN;r++){const v=clean((rows[r]||[])[c]);if(v.length>2&&isNaN(toNum(v))){len+=v.length;cnt++;}}
+      if(cnt>0&&len>bestLen){bestLen=len;descCol=c;}
     }
+    
     headerRow=0;
-    console.log('[parsePpto] fallback cols: desc='+descCol+' amt='+amtCol+' rows='+rows.length);
-  } else {
-    console.log('[parsePpto] header found row='+headerRow+' desc='+descCol+' amt='+amtCol);
+    console.log('[parsePpto] Phase2 result: desc_col='+descCol+' amt_col='+amtCol+' bestAmtScore='+bestAmtScore+' bestDescLen='+bestLen);
   }
 
   /* ── Phase 3: find TOTAL row (scan bottom-up) ── */
