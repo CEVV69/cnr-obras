@@ -738,7 +738,7 @@ function goPortada(){
 }
 
 function goMod(m){
-  if(!S.allProjects.length){toast('⚠️ Primero cargue el Excel');return;}
+  if(!S.allProjects.length){openAdmin();toast('⚠️ Primero cargue el Excel de proyectos',4000);return;}
   S.mod=m;
   if(S.openCodes.length) renderCurrent();
   else openSearch();
@@ -804,6 +804,7 @@ function renderCurrent(){
   const cod=S.openCodes[S.ci];
   const p=S.allProjects.find(r=>r['Código Proyecto']===cod);
   if(!p){showPortada();return;}
+  try{
   const total=S.openCodes.length;
   const isT=String(p['Tipo Obra']||'').toLowerCase().includes('tecnif');
   const rk=`${cod}_${S.mod}`;
@@ -847,7 +848,9 @@ function renderCurrent(){
   else html=bVisita(p,isT,rec,rk);
   document.getElementById('fcontent').innerHTML=html;
   initSig(rk);attachInv();
+  }catch(err){console.error('renderCurrent error:',err);toast('⚠️ Error al renderizar formulario');}
 }
+function actTab(m){S.mod=m;}
 
 function onSepChange(v){
   if(!S.openCodes.length)return;
