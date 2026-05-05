@@ -2085,21 +2085,19 @@ function extractAndFillInventory(rows, fk){
     return;
   }
 
-  /* ── Phase 6: filter ≥1% OR top-80% by value ── */
-  const threshold=0.01*grandTotal;
+  /* ── Phase 6: filter items to cover ≥90% of budget ── */
   const sorted=[...allItems].sort((a,b)=>b.amt-a.amt);
-  let top80Amt=0,top80Count=0;
+  let coverageAmt=0;
+  const significant=[];
   for(const it of sorted){
-    top80Amt+=it.amt;
-    top80Count++;
-    if(top80Amt/grandTotal>=0.80) break;
+    significant.push(it);
+    coverageAmt+=it.amt;
+    if(coverageAmt/grandTotal>=0.90) break;
   }
-  // Include items that are: ≥1% threshold OR within top-80% value items
-  let significant=allItems.filter(it=>it.amt>=threshold||sorted.slice(0,top80Count).includes(it));
-  console.log('[parsePpto] Phase6: threshold='+threshold.toFixed(0)+' top80Count='+top80Count+' significant items='+significant.length);
+  console.log('[parsePpto] Phase6: collected '+significant.length+' items covering '+((coverageAmt/grandTotal)*100).toFixed(1)+'% of budget');
   if(significant.length===0){
-    console.log('[parsePpto] Phase6: no items passed filter, using all');
-    significant=allItems;
+    console.log('[parsePpto] Phase6: fallback using all items');
+    significant.push(...allItems);
   }
 
   /* ── Phase 7: determine project type and build rows ── */
