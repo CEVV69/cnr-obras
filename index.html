@@ -431,11 +431,9 @@ body{background:#b8bec8}
 
   <!-- HEADER -->
   <div id="hdr">
-    <div style="display:flex;align-items:center;gap:8px">
-      <div class="pwr" onclick="goPortada()" title="Volver al inicio" style="font-size:16px">🏠</div>
-      <div class="hico hico-export" id="btn-export-proj" onclick="exportProject()" title="Exportar proyecto" style="display:none">💾</div>
-      <div class="hico hico-import" id="btn-import-proj" onclick="importProject()" title="Importar proyecto" style="display:none">📂</div>
-    </div>
+    <div class="pwr" onclick="goPortada()" title="Volver al inicio" style="font-size:16px">🏠</div>
+    <div class="hico hico-export" id="btn-export-proj" onclick="exportProject()" title="Exportar proyecto" style="display:none">💾</div>
+    <div class="hico hico-import" id="btn-import-proj" onclick="importProject()" title="Importar proyecto" style="display:none">📂</div>
     <div class="htitle" style="flex:1;text-align:center">
       <div class="t1" id="hdr-title" style="display:none"></div>
       <div class="t2" id="hdr-subtitle" style="display:none"></div>
@@ -501,21 +499,22 @@ body{background:#b8bec8}
 
       <!-- SYNC BUTTONS -->
       <div class="sync-row">
-        <button class="sync-btn export" onclick="exportProject()">
-          <span class="sb-icon">💾</span>
+        <button class="sync-btn export" onclick="exportJSON()">
+          <span class="sb-icon">📤</span>
           <span class="sb-text">
-            <div class="sb-title">Exportar proyecto</div>
-            <div class="sb-sub">Guardar proyecto actual</div>
+            <div class="sb-title">Exportar datos</div>
+            <div class="sb-sub">Guardar todo para llevar al tablet</div>
           </span>
         </button>
-        <button class="sync-btn import" onclick="importProject()">
-          <span class="sb-icon">📂</span>
+        <button class="sync-btn import" onclick="document.getElementById('json-inp').click()">
+          <span class="sb-icon">📥</span>
           <span class="sb-text">
-            <div class="sb-title">Importar proyecto</div>
-            <div class="sb-sub">Cargar proyecto desde archivo</div>
+            <div class="sb-title">Importar datos</div>
+            <div class="sb-sub">Cargar datos desde otro dispositivo</div>
           </span>
         </button>
       </div>
+      <input type="file" id="json-inp" accept=".json" style="display:none" onchange="importJSON(event)">
       <div id="storage-info" style="font-size:11px;color:#667;text-align:center;width:100%;max-width:420px">
         Cargando información de almacenamiento...
       </div>
@@ -729,9 +728,11 @@ function updateStorageInfo(){
 
 /* ── PORTADA ──────────────────────────────────────── */
 function showPortada(){
+  console.log('[showPortada] showing portada screen');
   const el1=document.getElementById('screen-portada');
   const el2=document.getElementById('screen-form');
   const el3=document.getElementById('recbar');
+  const el4=document.getElementById('hdr-title');
   const btnCfg=document.getElementById('btn-config-header');
   const btnExp=document.getElementById('btn-export-proj');
   const btnImp=document.getElementById('btn-import-proj');
@@ -739,6 +740,7 @@ function showPortada(){
   if(el1)el1.style.display='flex';
   if(el2)el2.style.display='none';
   if(el3)el3.style.display='none';
+  if(el4)el4.textContent='ACTA DE INVENTARIO DE EQUIPOS Y ELEMENTOS DE RIEGO';
   if(btnCfg)btnCfg.style.display='block';
   if(btnExp)btnExp.style.display='none';
   if(btnImp)btnImp.style.display='none';
@@ -1338,7 +1340,7 @@ function buildPDFHTML(p,m,rec,isT,items,photos,sig){
 
   // Signature block
   const sigBlock=sig
-    ?`<div style="margin-top:32px;text-align:center">
+    ?`<div style="margin-top:32px;text-align:center;page-break-inside:avoid">
         <img src="${sig}" style="height:80px;border-bottom:1px solid #1a2a3a;display:block;margin:0 auto">
         <p style="font-size:11px;margin:8px 0 2px;font-weight:600">${x(rec['_sup']||SUPS[0])}</p>
         <p style="font-size:10px;color:#555;margin:0">Unidad de Supervisión y Seguimiento de Obras Construidas<br>CNR Ñuble</p>
@@ -1346,7 +1348,7 @@ function buildPDFHTML(p,m,rec,isT,items,photos,sig){
 
   const modTitles={inicio:'INICIO DE OBRAS',visita:'VISITA DE SUPERVISIÓN INTERMEDIA',recepcion:'RECEPCIÓN DE OBRAS'};
 
-  // PAGE 1: Acta principal sin fotos
+  // PAGE 1
   let page1=`<!DOCTYPE html><html><head><meta charset="UTF-8">
   <title>Acta ${ML[m]} – ${p['Código Proyecto']}</title>
   <style>
@@ -1361,97 +1363,14 @@ function buildPDFHTML(p,m,rec,isT,items,photos,sig){
     .field-table .sep{width:14px;color:#555}
     .field-table .val{border-bottom:1px solid #bbb}
     .inv-table{border-collapse:collapse;width:100%;font-size:11px;margin-bottom:4px}
-    .inv-table th,.inv-table td{padding:5px;border:1px solid #ccc;text-align:left}
-    .inv-table th{background:#f5f5f5;font-weight:700;text-align:center}
-    .obs-block{margin:8px 0}
-    .obs-item{margin-bottom:8px;page-break-inside:avoid}
-    .ol{font-weight:700;font-size:11px;color:#333;margin-bottom:3px}
-    .ov{font-size:11px;color:#666;line-height:1.4;white-space:pre-wrap;word-wrap:break-word}
-  </style>
-  </head><body>
-  <div class="page">
-    <h2>${modTitles[m]}</h2>
-    <h3>Concurso: ${p['Concurso']||'–'} | Ley 18.450</h3>
-
-    <div class="sec-title">1.- Información General del Proyecto:</div>
-    <table class="field-table">
-      <tr><td class="lbl">Código</td><td class="sep">:</td><td class="val">${p['Código Proyecto']||''}</td><td></td><td class="lbl">Formulario</td><td class="sep">:</td><td class="val">${p['Formulario']||''}</td></tr>
-      <tr><td class="lbl">Nombre</td><td class="sep">:</td><td class="val" colspan="5">${p['Nombre proyecto']||''}</td></tr>
-      <tr><td class="lbl">Beneficiario</td><td class="sep">:</td><td class="val" colspan="5">${p['Nombre']||''}</td></tr>
-      <tr><td class="lbl">RUT</td><td class="sep">:</td><td class="val">${p['RUT']||''}</td><td></td><td class="lbl">Región</td><td class="sep">:</td><td class="val">${p['Región']||''}</td></tr>
-      <tr><td class="lbl">Predio</td><td class="sep">:</td><td class="val" colspan="5">${p['Predio']||''}</td></tr>
-      <tr><td class="lbl">Provincia</td><td class="sep">:</td><td class="val">${p['Provincia']||''}</td><td></td><td class="lbl">Comuna</td><td class="sep">:</td><td class="val">${p['Comuna']||''}</td></tr>
-      ${!isT?`<tr><td class="lbl">Localidad</td><td class="sep">:</td><td class="val">${rec['_localidad']||''}</td><td></td><td class="lbl">Teléfono</td><td class="sep">:</td><td class="val">${p['Teléfono Contacto']||''}</td></tr>`:''}
-      <tr><td class="lbl">Coordenadas UTM</td><td class="sep">:</td><td class="val">N: ${p['Norte']||'—'} &nbsp; E: ${p['Este']||'—'} &nbsp; Huso: ${p['Huso']||'—'}</td><td></td><td class="lbl">Fecha</td><td class="sep">:</td><td class="val">${rec['_fecha']||''}</td></tr>
-    </table>
-
-    ${(m==='recepcion'||m==='visita')?`
-    <div class="sec-title">2.- Inventario${isT?' de Equipos y Elementos':' de Obras Civiles'}:</div>
-    <table class="inv-table">
-      ${isT
-        ?`<thead><tr><th>N°</th><th>Elemento</th><th>Modelo</th><th>Marca</th><th>Cant.</th><th>N° Serie</th></tr></thead><tbody>${invRows}</tbody>`
-        :`<thead><tr><th>N°</th><th>Cant.</th><th>Tipo Obra</th><th>Dimensiones relevantes</th><th>Coordenadas inicio y fin de obra</th><th>Obs. técnicas (Materiales, otros)</th></tr></thead><tbody>${invRows}</tbody>`}
-    </table>`:''}
-
-    ${m==='inicio'?`
-    <div class="sec-title">Datos de Inicio de Obras:</div>
-    <table class="field-table">
-      <tr><td class="lbl">Fecha inicio de obras</td><td class="sep">:</td><td class="val">${rec['_f_ini']||''}</td><td></td><td class="lbl">Plazo ejecución</td><td class="sep">:</td><td class="val">${rec['_plazo']||''} días</td></tr>
-      <tr><td class="lbl">Constructor</td><td class="sep">:</td><td class="val" colspan="5">${rec['_constr']||''}</td></tr>
-      <tr><td class="lbl">Profesional residente</td><td class="sep">:</td><td class="val" colspan="5">${rec['_resid']||''}</td></tr>
-    </table>
-    <div class="obs-block">
-      <div class="obs-item"><div class="ol">Condiciones al inicio</div><div class="ov">${rec['_cond']||''}</div></div>
-      <div class="obs-item"><div class="ol">Compromisos y acuerdos</div><div class="ov">${rec['_comp']||''}</div></div>
-      <div class="obs-item"><div class="ol">Pendientes</div><div class="ov">${rec['_obs_ini']||''}</div></div>
-    </div>`:''}
-
-    ${m==='visita'?`
-    <div class="sec-title">Visita de Supervisión Intermedia:</div>
-    <table class="field-table">
-      <tr><td class="lbl">Fecha visita</td><td class="sep">:</td><td class="val">${rec['_f_vis']||''}</td><td></td><td class="lbl">% Avance estimado</td><td class="sep">:</td><td class="val">${rec['_av']||0}%</td></tr>
-      <tr><td class="lbl">Etapa constructiva</td><td class="sep">:</td><td class="val" colspan="5">${rec['_etapa']||''}</td></tr>
-      <tr><td class="lbl">Conformidad</td><td class="sep">:</td><td class="val">${rec['_conf']||''}</td><td></td><td class="lbl">Plazo reparos</td><td class="sep">:</td><td class="val">${rec['_plaz_rep']||''} días</td></tr>
-    </table>
-    <div class="obs-block">
-      <div class="obs-item"><div class="ol">Observaciones técnicas</div><div class="ov">${rec['_obs_vis']||''}</div></div>
-      <div class="obs-item"><div class="ol">Acuerdos y compromisos</div><div class="ov">${rec['_acuerd']||''}</div></div>
-    </div>`:''}
-
-    ${(rec['_obs']||rec['_pend'])&&m==='recepcion'?`
-    <div class="obs-block">
-      <div class="obs-item"><div class="ol">Observación modificaciones u otro</div><div class="ov">${rec['_obs']||''}</div></div>
-      <div class="obs-item"><div class="ol">Pendientes a la recepción</div><div class="ov">${rec['_pend']||''}</div></div>
-    </div>`:''}
-
-    ${sigBlock}
-  </div>
-  </body></html>`;
-
-  // PAGE 2: Fotos (si existen)
-  let page2='';
-  if(photos.length){
-    const phCells=photos.map((ph,i)=>
-      `<td style="padding:6px;text-align:center;vertical-align:top">
-        <img src="${ph}" style="width:${PHW}px;height:${PHH}px;object-fit:cover;border:1px solid #ccc;display:block">
-        <div style="font-size:9px;color:#666;margin-top:3px">Foto ${i+1}</div>
-      </td>`
-    );
-    let rows='';
-    for(let i=0;i<phCells.length;i+=cols){
-      rows+=`<tr>${phCells.slice(i,i+cols).join('')}</tr>`;
-    }
-    page2=`
-  <div class="page">
-    <h2>REGISTRO FOTOGRÁFICO</h2>
-    <table style="border-collapse:collapse;width:100%;margin-top:12px">${rows}</table>
-  </div>`;
-  }
-
-  return page1+page2+`</html>`;
-}
-
-
+    .inv-table th{background:#3a4a6b;color:#fff;padding:5px 7px;text-align:left;font-size:11px;font-weight:700}
+    .inv-table td{border:1px solid #ccc;padding:4px 6px}
+    .inv-table tr:nth-child(even) td{background:#f5f6f8}
+    .arch-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+    .arch-chip{border:1px solid #bbb;border-radius:3px;padding:3px 9px;font-size:11px;color:#333}
+    .obs-block{border:1px solid #bbb;border-radius:3px;margin-bottom:10px;overflow:hidden}
+    .obs-item{padding:6px 10px;border-bottom:1px solid #e0e4ea}
+    .obs-item:last-child{border-bottom:none}
     .obs-item .ol{font-size:10px;font-weight:700;color:#3a4a6b;text-transform:uppercase}
     .obs-item .ov{font-size:12px;min-height:18px}
     @page{margin:15mm;size:A4}
@@ -1518,11 +1437,31 @@ function buildPDFHTML(p,m,rec,isT,items,photos,sig){
     <div class="obs-item"><div class="ol">Pendientes a la recepción</div><div class="ov">${rec['_pend']||''}</div></div>
   </div>`:''}
 
-  ${photoGrid}
   ${sigBlock}
   </div>
+  `;
 
-</body></html>`;
+  // PAGE 2: Fotos
+  let page2='';
+  if(photos.length){
+    const phCells=photos.map((ph,i)=>
+      `<td style="padding:6px;text-align:center;vertical-align:top">
+        <img src="${ph}" style="width:${PHW}px;height:${PHH}px;object-fit:cover;border:1px solid #ccc;display:block">
+        <div style="font-size:9px;color:#666;margin-top:3px">Foto ${i+1}</div>
+      </td>`
+    );
+    let rows='';
+    for(let i=0;i<phCells.length;i+=cols){
+      rows+=`<tr>${phCells.slice(i,i+cols).join('')}</tr>`;
+    }
+    page2=`
+  <div class="page">
+    <h2>REGISTRO FOTOGRÁFICO</h2>
+    <table style="border-collapse:collapse;width:100%;margin-top:12px">${rows}</table>
+  </div>`;
+  }
+
+  return page1+page2+`</body></html>`;
 }
 
 function getPDFData(){
@@ -1539,27 +1478,30 @@ function getPDFData(){
 function doPDF(print){
   save();
   const d=getPDFData();if(!d){toast('Abra un proyecto');return;}
-  const htmlContent=buildPDFHTML(d.p,d.m,d.rec,d.isT,d.items,d.photos,d.sig);
+  const html=buildPDFHTML(d.p,d.m,d.rec,d.isT,d.items,d.photos,d.sig);
   const opt={margin:10,filename:`Acta_${d.cod}_${ML[d.m].replace(/ /g,'_')}.pdf`,image:{type:'jpeg',quality:0.98},html2canvas:{scale:2},jsPDF:{orientation:'portrait',unit:'mm',format:'a4'}};
-  html2pdf().set(opt).from(htmlContent).save();
+  if(print){
+    html2pdf().set(opt).from(html).output('datauristring').then(pdf=>{
+      const w=window.open(pdf);
+      setTimeout(()=>w.print(),800);
+    });
+  } else {
+    html2pdf().set(opt).from(html).save();
+  }
 }
 
-/* ── EMAIL: genera PDF y envía por correo ─── */
+/* ── EMAIL: genera PDF y abre correo ─── */
 function doEmail(){
   save();
   const d=getPDFData();if(!d){toast('Abra un proyecto');return;}
   const htmlContent=buildPDFHTML(d.p,d.m,d.rec,d.isT,d.items,d.photos,d.sig);
   const fname=`Acta_${d.cod}_${ML[d.m].replace(/ /g,'_')}.pdf`;
   const opt={margin:10,filename:fname,image:{type:'jpeg',quality:0.98},html2canvas:{scale:2},jsPDF:{orientation:'portrait',unit:'mm',format:'a4'}};
-  
-  // Generar PDF
   html2pdf().set(opt).from(htmlContent).output('blob').then(pdf=>{
     const url=URL.createObjectURL(pdf);
     const a=document.createElement('a');
     a.href=url;a.download=fname;document.body.appendChild(a);a.click();document.body.removeChild(a);
     setTimeout(()=>URL.revokeObjectURL(url),2000);
-    
-    // Abrir correo
     setTimeout(()=>{
       const subj=encodeURIComponent(`CNR Ñuble – ${ML[d.m]} – ${d.cod}`);
       const body=encodeURIComponent(
@@ -1572,7 +1514,7 @@ function doEmail(){
         `Unidad de Supervisión y Seguimiento de Obras Construidas\nCNR Ñuble`
       );
       window.open(`mailto:?subject=${subj}&body=${body}`);
-    },1000);
+    },800);
     toast('📥 PDF generado. Adjúntelo al correo.',4000);
   }).catch(err=>{console.error(err);toast('⚠️ Error al generar PDF');});
 }
