@@ -1971,27 +1971,34 @@ function extractAndFillInventory(rows, fk){
   // Phase 1a: look for header row with multiple matching keywords
   for(let r=0;r<Math.min(30,rows.length)&&headerRow<0;r++){
     const row=rows[r]||[];
-    if(row.length<2) continue; // header must have at least 2 columns
+    if(row.length<3) continue; // header must have at least 3 columns
     
-    let kwMatches=0; // count how many keywords match in this row
     let dC=-1,aC=-1,cC=-1,uC=-1;
+    let kwCount=0; // count ALL keyword matches in this row
+    const cellMatches=[]; // track (col, type) pairs
     
     for(let c=0;c<row.length;c++){
       const v=norm(row[c]);
       if(!v||v.length<2) continue;
       
-      let matched=false;
-      if(dC<0&&descKW.some(k=>v.includes(k))){dC=c;kwMatches++;matched=true;}
-      if(aC<0&&amtKW.some(k=>v.includes(k))){aC=c;kwMatches++;matched=true;}
-      if(cC<0&&cantKW.some(k=>v.includes(k))){cC=c;kwMatches++;matched=true;}
-      if(uC<0&&unitKW.some(k=>v.includes(k))){uC=c;kwMatches++;matched=true;}
+      if(descKW.some(k=>v.includes(k))){dC=c;kwCount++;cellMatches.push([c,'d']);}
+      if(amtKW.some(k=>v.includes(k))){aC=c;kwCount++;cellMatches.push([c,'a']);}
+      if(cantKW.some(k=>v.includes(k))){cC=c;kwCount++;cellMatches.push([c,'c']);}
+      if(unitKW.some(k=>v.includes(k))){uC=c;kwCount++;cellMatches.push([c,'u']);}
     }
     
-    // Accept as header only if: dC and aC found AND different columns AND at least 2 keyword matches
-    if(dC>=0&&aC>=0&&dC!==aC&&kwMatches>=2){
+    // Accept as header if: 3+ distinct keyword matches, including desc AND (amt OR unit), AND columns are different
+    const hasDesc=dC>=0;
+    const hasAmt=aC>=0;
+    const hasUnit=uC>=0;
+    const hasCant=cC>=0;
+    const allDiff=new Set([dC,aC,cC,uC].filter(x=>x>=0)).size===([dC,aC,cC,uC].filter(x=>x>=0)).length;
+    
+    if(kwCount>=3&&hasDesc&&(hasAmt||hasUnit)&&allDiff){
       headerRow=r; descCol=dC; amtCol=aC;
       cantCol=cC>=0?cC:-1; unitCol=uC>=0?uC:-1;
-      console.log('[parsePpto] Phase1 header detected: row='+r+' desc_col='+dC+' amt_col='+aC+' kwMatches='+kwMatches);
+      console.log('[parsePpto] Phase1 header detected: row='+r+' desc='+dC+' amt='+aC+' cant='+cC+' unit='+uC+' kwCount='+kwCount);
+      break; // stop at first valid header
     }
   }
 
