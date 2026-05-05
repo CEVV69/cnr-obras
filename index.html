@@ -1979,10 +1979,10 @@ function extractAndFillInventory(rows, fk){
     const row=rows[r];
     const rowText=row.map(v=>lc(v)).join(' ');
     if(totalKW.some(k=>rowText.includes(k))){totalRow=r;break;}
-    // Also catch rows where first non-empty cell says just "total"
     const firstText=clean(row.find(v=>String(v||'').trim().length>0)||'');
     if(lc(firstText)==='total'&&r>headerRow+5){totalRow=r;break;}
   }
+  console.log('[parsePpto] Phase3: totalRow='+totalRow+' (of '+rows.length+')');
 
   /* ── Phase 4: collect items ── */
   const allItems=[];
@@ -1993,11 +1993,8 @@ function extractAndFillInventory(rows, fk){
     if(!row||!row.length) continue;
     const desc=clean(row[descCol]||'');
     if(!isDesc(desc)) continue;
-    // Skip subtotal/section header rows (usually no amount or amount=0)
-    // Try amtCol first, then scan right for first big number
     let amt=toNum(row[amtCol]);
     if(isNaN(amt)||amt<=0){
-      // Try adjacent columns
       for(let c=Math.max(0,amtCol-2);c<Math.min(row.length,amtCol+4);c++){
         const n=toNum(row[c]);
         if(!isNaN(n)&&n>0){amt=n;break;}
@@ -2009,6 +2006,7 @@ function extractAndFillInventory(rows, fk){
     allItems.push({desc,amt,unit,cant:cant||'1'});
     grandTotal+=amt;
   }
+  console.log('[parsePpto] Phase4: collected '+allItems.length+' items, grandTotal='+grandTotal);
 
   /* ── Phase 5: if grand total still 0, sum all items ── */
   if(grandTotal<=0) grandTotal=allItems.reduce((s,it)=>s+it.amt,0);
@@ -2021,8 +2019,10 @@ function extractAndFillInventory(rows, fk){
       if(!isNaN(n)&&n>grandTotal*0.5){grandTotal=Math.max(grandTotal,n);break;}
     }
   }
+  console.log('[parsePpto] Phase5: final grandTotal='+grandTotal);
 
   if(grandTotal<=0||allItems.length===0){
+    console.log('[parsePpto] ABORT: no items or zero total');
     toast('⚠️ No se encontraron ítems con montos en el presupuesto');
     return;
   }
@@ -2030,6 +2030,7 @@ function extractAndFillInventory(rows, fk){
   /* ── Phase 6: filter ≥5%, fallback top-80% ── */
   const threshold=0.05*grandTotal;
   let significant=allItems.filter(it=>it.amt>=threshold);
+  console.log('[parsePpto] Phase6: threshold='+threshold+' significant items='+significant.length);
   if(significant.length===0){
     const sorted=[...allItems].sort((a,b)=>b.amt-a.amt);
     let acc=0;
@@ -2038,6 +2039,7 @@ function extractAndFillInventory(rows, fk){
       acc+=it.amt;
       if(acc/grandTotal>=0.80) break;
     }
+    console.log('[parsePpto] Phase6: fallback to top '+significant.length+' items (80%)');
   }
 
   /* ── Phase 7: determine project type and build rows ── */
