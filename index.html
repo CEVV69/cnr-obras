@@ -501,22 +501,21 @@ body{background:#b8bec8}
 
       <!-- SYNC BUTTONS -->
       <div class="sync-row">
-        <button class="sync-btn export" onclick="exportJSON()">
-          <span class="sb-icon">📤</span>
+        <button class="sync-btn export" onclick="exportProject()">
+          <span class="sb-icon">💾</span>
           <span class="sb-text">
-            <div class="sb-title">Exportar datos</div>
-            <div class="sb-sub">Guardar todo para llevar al tablet</div>
+            <div class="sb-title">Exportar proyecto</div>
+            <div class="sb-sub">Guardar proyecto actual</div>
           </span>
         </button>
-        <button class="sync-btn import" onclick="document.getElementById('json-inp').click()">
-          <span class="sb-icon">📥</span>
+        <button class="sync-btn import" onclick="importProject()">
+          <span class="sb-icon">📂</span>
           <span class="sb-text">
-            <div class="sb-title">Importar datos</div>
-            <div class="sb-sub">Cargar datos desde otro dispositivo</div>
+            <div class="sb-title">Importar proyecto</div>
+            <div class="sb-sub">Cargar proyecto desde archivo</div>
           </span>
         </button>
       </div>
-      <input type="file" id="json-inp" accept=".json" style="display:none" onchange="importJSON(event)">
       <div id="storage-info" style="font-size:11px;color:#667;text-align:center;width:100%;max-width:420px">
         Cargando información de almacenamiento...
       </div>
