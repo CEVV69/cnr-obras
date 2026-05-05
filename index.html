@@ -2124,8 +2124,27 @@ function extractAndFillInventory(rows, fk){
   const ik=`inv_${cod}_${mod}`;
   console.log('[parsePpto] Phase7: cod='+cod+' mod='+mod+' isT='+isT+' ik='+ik+' projectFound='+!!p);
 
-  const newItems=significant.map(it=>{
-    const pct=((it.amt/grandTotal)*100).toFixed(1);
+  /* ── Phase 7b: deduplicate by description, sum quantities ── */
+  const dedupMap=new Map();
+  for(const it of significant){
+    const key=it.desc.toLowerCase().trim();
+    if(dedupMap.has(key)){
+      const existing=dedupMap.get(key);
+      // Sum quantities (handle numeric strings)
+      const oldCant=parseFloat(existing.cant)||1;
+      const newCant=parseFloat(it.cant)||1;
+      existing.cant=(oldCant+newCant).toString();
+      existing.amt+=it.amt; // also sum amounts for percentage recalc
+    } else {
+      dedupMap.set(key,{...it});
+    }
+  }
+  const dedupItems=Array.from(dedupMap.values());
+  const dedupGrandTotal=dedupItems.reduce((s,it)=>s+it.amt,0);
+  console.log('[parsePpto] Phase7b: deduped '+significant.length+' to '+dedupItems.length+' items');
+
+  const newItems=dedupItems.map(it=>{
+    const pct=((it.amt/dedupGrandTotal)*100).toFixed(1);
     if(isT){
       return {elem:it.desc.substring(0,80),mod:'',marc:'',cant:it.cant,ser:'',_pct:pct};
     } else {
