@@ -2049,10 +2049,16 @@ function extractAndFillInventory(rows, fk){
   const modIdx=fkParts.findIndex(pt=>MODS.includes(pt));
   const cod=modIdx>0?fkParts.slice(0,modIdx).join('_'):(S.openCodes[S.ci]||'');
   const mod=modIdx>=0?fkParts[modIdx]:S.mod;
-  if(!cod){toast('⚠️ No se pudo identificar el proyecto');return;}
+  console.log('[parsePpto] Phase7: fk='+fk+' fkParts='+JSON.stringify(fkParts)+' modIdx='+modIdx+' cod='+cod+' mod='+mod);
+  if(!cod){
+    console.log('[parsePpto] Phase7 ABORT: no cod found');
+    toast('⚠️ No se pudo identificar el proyecto');
+    return;
+  }
   const p=S.allProjects.find(r=>r['Código Proyecto']===cod);
   const isT=p?String(p['Tipo Obra']||'').toLowerCase().includes('tecnif'):true;
   const ik=`inv_${cod}_${mod}`;
+  console.log('[parsePpto] Phase7: cod='+cod+' mod='+mod+' isT='+isT+' ik='+ik+' projectFound='+!!p);
 
   const newItems=significant.map(it=>{
     const pct=((it.amt/grandTotal)*100).toFixed(1);
@@ -2062,17 +2068,24 @@ function extractAndFillInventory(rows, fk){
       return {cant:it.cant,tipo:it.desc.substring(0,80),dim:it.unit?`Unidad: ${it.unit}`:'',coo:'',obs:`${pct}% ppto`,_pct:pct};
     }
   });
+  console.log('[parsePpto] Phase7: built '+newItems.length+' newItems for inventory');
 
   /* ── Phase 8: merge or replace ── */
   const existing=S.inv[ik]||[];
   const isEmpty=existing.length===0||(existing.length===1&&!existing[0].elem&&!existing[0].tipo);
+  console.log('[parsePpto] Phase8: existing items='+existing.length+' isEmpty='+isEmpty);
   if(!isEmpty){
-    if(!confirm(`Se encontraron ${newItems.length} ítems del presupuesto.\n¿Reemplazar inventario actual?\n[OK]=Reemplazar`)) return;
+    if(!confirm(`Se encontraron ${newItems.length} ítems del presupuesto.\n¿Reemplazar inventario actual?\n[OK]=Reemplazar`)) {
+      console.log('[parsePpto] Phase8: user cancelled replace');
+      return;
+    }
   }
   S.inv[ik]=newItems;
   persist();
+  console.log('[parsePpto] Phase8: persisted '+newItems.length+' items to S.inv['+ik+']');
   renderCurrent();
   toast(`✅ ${newItems.length} ítems cargados (total $${Math.round(grandTotal).toLocaleString('es-CL')})`);
+  console.log('[parsePpto] COMPLETE: inventory loaded');
 }
 
 /* ── EXPORTAR / IMPORTAR JSON (sincronización entre dispositivos) ── */
