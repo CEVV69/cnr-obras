@@ -2028,7 +2028,7 @@ function extractAndFillInventory(rows, fk){
   }
 
   /* ── Phase 6: filter ≥5%, fallback top-80% ── */
-  const threshold=0.05*grandTotal;
+  const threshold=0.01*grandTotal;
   let significant=allItems.filter(it=>it.amt>=threshold);
   console.log('[parsePpto] Phase6: threshold='+threshold+' significant items='+significant.length);
   if(significant.length===0){
