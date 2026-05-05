@@ -40,7 +40,11 @@ if ('serviceWorker' in navigator) {
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script>pdfjsWorker.src='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
+<script>
+if(typeof pdfjsLib!=='undefined'){
+  pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+}
+</script>
 <style>
 /* =====================================================
    BASE
@@ -1843,35 +1847,51 @@ async function parsePrespuestoPDF(dataURL, fk){
     const b64=dataURL.split(',')[1];
     const uint8Array=Uint8Array.from(atob(b64),c=>c.charCodeAt(0));
     const pdf=await pdfjsLib.getDocument({data:uint8Array}).promise;
-    const allText=[];
+    const allLines=[];
     
-    for(let i=1;i<=pdf.numPages;i++){
+    for(let i=1;i<=Math.min(pdf.numPages,50);i++){
       const page=await pdf.getPage(i);
       const text=await page.getTextContent();
-      const pageText=text.items.map(item=>item.str).join(' ');
-      allText.push(pageText);
+      
+      // Group text items by Y position (lines)
+      const lineMap=new Map();
+      text.items.forEach(item=>{
+        if(item.str.trim().length===0) return;
+        const y=Math.round(item.y);
+        if(!lineMap.has(y)) lineMap.set(y,[]);
+        lineMap.get(y).push({x:item.x,str:item.str});
+      });
+      
+      // Sort lines by Y (descending) and build text
+      Array.from(lineMap.entries())
+        .sort((a,b)=>b[0]-a[0])
+        .forEach(([y,items])=>{
+          items.sort((a,b)=>a.x-b.x);
+          const line=items.map(it=>it.str).join(' ');
+          if(line.trim().length>0) allLines.push(line);
+        });
     }
     hideL();
     
-    const fullText=allText.join('\n');
+    const fullText=allLines.join('\n');
+    console.log('[parsePrespuestoPDF] extracted '+allLines.length+' lines from '+pdf.numPages+' pages');
+    
     if(!fullText||fullText.length<10){
       toast('⚠️ PDF vacío o ilegible');
       return;
     }
     
-    // Parse PDF text into table-like rows
-    const lines=fullText.split('\n').filter(l=>l.trim().length>0);
-    const rows=lines.map(line=>{
-      // Split by multiple spaces or tabs
-      return line.split(/\s{2,}|\t/).map(s=>s.trim()).filter(s=>s.length>0);
+    // Parse text into table-like rows
+    const rows=allLines.map(line=>{
+      // Split by multiple spaces, tabs, or common delimiters
+      return line.split(/\s{2,}|\t|,(?=\d)/).map(s=>s.trim()).filter(s=>s.length>0);
     });
     
-    console.log('[parsePrespuestoPDF] extracted '+rows.length+' rows from '+pdf.numPages+' pages');
     extractAndFillInventory(rows, fk);
   }catch(err){
     console.error('PDF parse error:',err);
     hideL();
-    toast('⚠️ Error al leer PDF');
+    toast('⚠️ Error al leer PDF: '+err.message);
   }
 }
 
