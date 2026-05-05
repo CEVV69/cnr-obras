@@ -1882,17 +1882,18 @@ function extractAndFillInventory(rows, fk){
   /* ── Phase 1: detect header row ── */
   let headerRow=-1,descCol=-1,amtCol=-1,cantCol=-1,unitCol=-1;
 
-  // Keywords for each column type
-  const descKW=['descripcion','descripción','partida','item','detalle','concepto','nombre','material','elemento','obra','actividad','trabajo'];
-  const amtKW=['total','monto','precio','valor','importe','subtotal','costo','precio total','valor total'];
+  // Keywords (normalize accents before compare)
+  const norm=s=>String(s||'').toLowerCase().normalize('NFD').replace(/\p{M}/gu,'');
+  const descKW=['descripcion','partida','item','detalle','concepto','nombre','material','elemento','obra','actividad','trabajo','glosa'];
+  const amtKW=['total','monto','precio','valor','importe','subtotal','costo'];
   const cantKW=['cant','cantidad','ctd','num','n°','no.','unidades'];
-  const unitKW=['unidad','ud','un','um','u.m.','u/m'];
+  const unitKW=['unidad','ud.','un.','u.m.','medida'];
 
-  for(let r=0;r<Math.min(20,rows.length)&&headerRow<0;r++){
-    const row=rows[r];
+  for(let r=0;r<Math.min(30,rows.length)&&headerRow<0;r++){
+    const row=rows[r]||[];
     let dC=-1,aC=-1,cC=-1,uC=-1;
     for(let c=0;c<row.length;c++){
-      const v=lc(row[c]);
+      const v=norm(row[c]);
       if(dC<0&&descKW.some(k=>v.includes(k))) dC=c;
       if(aC<0&&amtKW.some(k=>v.includes(k))) aC=c;
       if(cC<0&&cantKW.some(k=>v.includes(k))) cC=c;
@@ -1904,27 +1905,27 @@ function extractAndFillInventory(rows, fk){
     }
   }
 
-  /* ── Phase 2: fallback column detection ── */
+  /* Phase 2: fallback heuristic */
   if(headerRow<0||descCol<0||amtCol<0){
-    // Find rightmost column with the most large positive numbers → amount col
-    const scanN=Math.min(60,rows.length);
-    let bestAmtHits=0;
-    for(let c=0;c<20;c++){
-      let hits=0,sum=0;
-      for(let r=1;r<scanN;r++){
-        const n=toNum(rows[r][c]);
-        if(!isNaN(n)&&n>1000){hits++;sum+=n;}
-      }
-      if(hits>bestAmtHits){bestAmtHits=hits;amtCol=c;}
+    const scanN=Math.min(80,rows.length);
+    const maxCols=rows.slice(0,scanN).reduce((m,r)=>Math.max(m,(r||[]).length),0);
+    let bestAmtScore=0;
+    for(let c=0;c<maxCols;c++){
+      let hits=0;
+      for(let r=0;r<scanN;r++){const n=toNum((rows[r]||[])[c]);if(!isNaN(n)&&n>0)hits++;}
+      const score=hits+(c*0.1);
+      if(score>bestAmtScore){bestAmtScore=score;amtCol=c;}
     }
-    // Find longest-text column left of amtCol → desc col
     let bestLen=0;
     for(let c=0;c<Math.max(1,amtCol);c++){
       let len=0;
-      for(let r=1;r<Math.min(60,rows.length);r++) len+=clean(rows[r][c]).length;
+      for(let r=0;r<scanN;r++){const v=clean((rows[r]||[])[c]);if(v.length>2&&isNaN(toNum(v)))len+=v.length;}
       if(len>bestLen){bestLen=len;descCol=c;}
     }
     headerRow=0;
+    console.log('[parsePpto] fallback cols: desc='+descCol+' amt='+amtCol+' rows='+rows.length);
+  } else {
+    console.log('[parsePpto] header found row='+headerRow+' desc='+descCol+' amt='+amtCol);
   }
 
   /* ── Phase 3: find TOTAL row (scan bottom-up) ── */
@@ -1996,10 +1997,16 @@ function extractAndFillInventory(rows, fk){
   }
 
   /* ── Phase 7: determine project type and build rows ── */
-  const cod=S.openCodes[S.ci];if(!cod) return;
+  // fk = "f_COD_mod_Slot" — extract cod+mod reliably from key
+  const MODS=['recepcion','inventario','avance','cierre'];
+  const fkParts=fk.replace(/^f_/,'').split('_');
+  const modIdx=fkParts.findIndex(pt=>MODS.includes(pt));
+  const cod=modIdx>0?fkParts.slice(0,modIdx).join('_'):(S.openCodes[S.ci]||'');
+  const mod=modIdx>=0?fkParts[modIdx]:S.mod;
+  if(!cod){toast('⚠️ No se pudo identificar el proyecto');return;}
   const p=S.allProjects.find(r=>r['Código Proyecto']===cod);
   const isT=p?String(p['Tipo Obra']||'').toLowerCase().includes('tecnif'):true;
-  const ik=`inv_${cod}_${S.mod}`;
+  const ik=`inv_${cod}_${mod}`;
 
   const newItems=significant.map(it=>{
     const pct=((it.amt/grandTotal)*100).toFixed(1);
