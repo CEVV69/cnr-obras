@@ -2135,50 +2135,6 @@ function importJSON(event){
 
 
 /* ── ADMIN MODAL ─────────────────────────────────── */
-function openAdmin(){
-  updateAdmStatus();
-  document.getElementById('admin-modal').classList.add('on');
-}
-function closeAdmin(){document.getElementById('admin-modal').classList.remove('on');}
-
-function updateAdmStatus(){
-  const el=document.getElementById('adm-status');
-  const btn=document.getElementById('btn-generar-json');
-  if(!el)return;
-  const n=S.allProjects.length;
-  const phCount=Object.values(S.ph).reduce((a,arr)=>a+(arr?.length||0),0);
-  try{
-    const kb=Math.round(JSON.stringify(S).length*0.75/1024);
-    const mb=(kb/1024).toFixed(1);
-    if(n>0){
-      el.className='adm-status';
-      el.innerHTML=`✅ <strong>${n} proyectos</strong> cargados · ${phCount} fotos · ${mb} MB usados<br>
-        <span style="font-size:10px;color:#555">Almacenamiento: IndexedDB (~500 MB disponibles)</span>`;
-      if(btn)btn.disabled=false;
-      const delBtn=document.getElementById('btn-del-excel');
-      if(delBtn)delBtn.style.display='block';
-    } else {
-      el.className='adm-status empty';
-      el.innerHTML='⚠️ Sin proyectos cargados. Cargue el Excel de proyectos.';
-      if(btn)btn.disabled=true;
-      const delBtn2=document.getElementById('btn-del-excel');
-      if(delBtn2)delBtn2.style.display='none';
-    }
-  }catch(e){el.textContent='—';}
-  // Update xl-zone style
-  const zone=document.getElementById('adm-xl-zone');
-  const sub=document.getElementById('xl-sub');
-  if(zone&&sub){
-    if(n>0){
-      zone.classList.add('loaded');
-      sub.textContent=`✅ ${n} proyectos cargados`;
-    } else {
-      zone.classList.remove('loaded');
-      sub.textContent='Toque para seleccionar el archivo';
-    }
-  }
-}
-
 
 /* ── ELIMINAR EXCEL ── */
 function eliminarExcel(){
