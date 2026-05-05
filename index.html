@@ -39,6 +39,8 @@ if ('serviceWorker' in navigator) {
 </script>
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>pdfjsWorker.src='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
 <style>
 /* =====================================================
    BASE
@@ -1180,10 +1182,10 @@ function upFile(fk,sl,el){
   if(S.files[fk]){
     if(confirm(`Archivo: ${S.files[fk].name}\n\n[OK] Abrir · [Cancelar] Reemplazar`)){viFile(fk);return;}
   }
-  inp.onchange=e=>{
+  inp.onchange=async e=>{
     const f=e.target.files[0];if(!f)return;
     const fr=new FileReader();
-    fr.onload=ev=>{
+    fr.onload=async ev=>{
       S.files[fk]={name:f.name,type:f.type,data:ev.target.result};
       persist();
       const box=el.querySelector('.arch-box');
@@ -1194,7 +1196,7 @@ function upFile(fk,sl,el){
       if(isPresSlot){
         const nm=f.name.toLowerCase();
         if(nm.endsWith('.xlsx')||nm.endsWith('.xls')) parsePrespuesto(ev.target.result,fk);
-        else if(nm.endsWith('.pdf')) parsePrespuestoPDF(ev.target.result,fk);
+        else if(nm.endsWith('.pdf')) await parsePrespuestoPDF(ev.target.result,fk);
       }
     };
     fr.readAsDataURL(f);
@@ -1834,26 +1836,42 @@ function parsePrespuesto(dataURL, fk){
   }
 }
 
-/* ── PRESUPUESTO PARSER — PDF (text extraction) ── */
-function parsePrespuestoPDF(dataURL, fk){
-  toast('📄 Leyendo PDF de presupuesto...', 5000);
-  // Extract text from PDF using basic parsing
-  // We'll parse the raw PDF text stream
+/* ── PRESUPUESTO PARSER — PDF (using pdf.js) ── */
+async function parsePrespuestoPDF(dataURL, fk){
+  showL('📄 Leyendo PDF...');
   try{
     const b64=dataURL.split(',')[1];
-    const bin=atob(b64);
-    // Extract text content from PDF streams
-    const textLines=extractPDFText(bin);
-    if(!textLines.length){
-      toast('⚠️ No se pudo extraer texto del PDF. Use Excel.');
+    const uint8Array=Uint8Array.from(atob(b64),c=>c.charCodeAt(0));
+    const pdf=await pdfjsLib.getDocument({data:uint8Array}).promise;
+    const allText=[];
+    
+    for(let i=1;i<=pdf.numPages;i++){
+      const page=await pdf.getPage(i);
+      const text=await page.getTextContent();
+      const pageText=text.items.map(item=>item.str).join(' ');
+      allText.push(pageText);
+    }
+    hideL();
+    
+    const fullText=allText.join('\n');
+    if(!fullText||fullText.length<10){
+      toast('⚠️ PDF vacío o ilegible');
       return;
     }
-    // Convert text lines to rows array (same format as Excel parser)
-    const rows=textLines.map(line=>line.split(/	|  {2,}/));
+    
+    // Parse PDF text into table-like rows
+    const lines=fullText.split('\n').filter(l=>l.trim().length>0);
+    const rows=lines.map(line=>{
+      // Split by multiple spaces or tabs
+      return line.split(/\s{2,}|\t/).map(s=>s.trim()).filter(s=>s.length>0);
+    });
+    
+    console.log('[parsePrespuestoPDF] extracted '+rows.length+' rows from '+pdf.numPages+' pages');
     extractAndFillInventory(rows, fk);
   }catch(err){
     console.error('PDF parse error:',err);
-    toast('⚠️ Error al leer PDF. Intente con Excel.');
+    hideL();
+    toast('⚠️ Error al leer PDF');
   }
 }
 
