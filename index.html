@@ -2085,16 +2085,22 @@ function extractAndFillInventory(rows, fk){
     return;
   }
 
-  /* ── Phase 6: filter items to cover ≥90% of budget ── */
+  /* ── Phase 6: filter items to cover ≥95% of budget + mínimo 0.5% ── */
+  const minThreshold=0.005*grandTotal; // 0.5% mínimo
   const sorted=[...allItems].sort((a,b)=>b.amt-a.amt);
   let coverageAmt=0;
   const significant=[];
+  
+  // Primero: tomar items hasta cubrir 95%
   for(const it of sorted){
-    significant.push(it);
-    coverageAmt+=it.amt;
-    if(coverageAmt/grandTotal>=0.90) break;
+    if(it.amt>=minThreshold){
+      significant.push(it);
+      coverageAmt+=it.amt;
+    }
+    if(coverageAmt/grandTotal>=0.95) break;
   }
-  console.log('[parsePpto] Phase6: collected '+significant.length+' items covering '+((coverageAmt/grandTotal)*100).toFixed(1)+'% of budget');
+  
+  console.log('[parsePpto] Phase6: collected '+significant.length+' items (≥0.5%) covering '+((coverageAmt/grandTotal)*100).toFixed(1)+'% of budget');
   if(significant.length===0){
     console.log('[parsePpto] Phase6: fallback using all items');
     significant.push(...allItems);
