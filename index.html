@@ -1348,146 +1348,234 @@ function save(){
   S.rec[rk]=rec;persist();toast('💾 Guardado');
 }
 
-/* ── PDF — fiel al acta FileMaker ────────────────── */
+/* ── PDF — fiel al acta oficial CNR ────────────────── */
 function buildPDFHTML(p,m,rec,isT,items,photos,sig){
-  const cols=isT?3:2;
-  const PHW=isT?180:260;
-  const PHH=isT?135:195;
 
-  // Inventory table
-  let invRows='';
-  if(m==='recepcion'||m==='visita'){
-    if(isT){
-      invRows=items.map((it,i)=>`<tr><td style="text-align:center">${i+1}</td><td>${it.elem||''}</td><td>${it.mod||''}</td><td>${it.marc||''}</td><td style="text-align:center">${it.cant||''}</td><td>${it.ser||''}</td></tr>`).join('');
-    } else {
-      invRows=items.map((it,i)=>`<tr><td style="text-align:center">${i+1}</td><td style="text-align:center">${it.cant||''}</td><td>${it.tipo||''}</td><td>${it.dim||''}</td><td>${it.coo||''}</td><td>${it.obs||''}</td></tr>`).join('');
-    }
-  }
+  // Logo CNR en base64 inline (se carga desde icon-192.png del bundle)
+  // Se incluye como URL relativa — html2pdf lo resuelve correctamente
+  const logoSrc='icon-192.png';
+  const supName=x(rec['_sup']||SUPS[0]);
 
-  // Signature block
-  const sigBlock=sig
-    ?`<div style="margin-top:32px;text-align:center;page-break-inside:avoid">
-        <img src="${sig}" style="height:80px;border-bottom:1px solid #1a2a3a;display:block;margin:0 auto">
-        <p style="font-size:11px;margin:8px 0 2px;font-weight:600">${x(rec['_sup']||SUPS[0])}</p>
-        <p style="font-size:10px;color:#555;margin:0">Unidad de Supervisión y Seguimiento de Obras Construidas<br>CNR Ñuble</p>
-      </div>` : '';
-
-  const modTitles={inicio:'INICIO DE OBRAS',visita:'VISITA DE SUPERVISIÓN INTERMEDIA',recepcion:'RECEPCIÓN DE OBRAS'};
-
-  // PAGE 1
-  let page1=`<!DOCTYPE html><html><head><meta charset="UTF-8">
-  <title>Acta ${ML[m]} – ${p['Código Proyecto']}</title>
-  <style>
-    body{font-family:'Helvetica Neue',Arial,sans-serif;font-size:12px;color:#1a2a3a;margin:0;padding:0}
-    .page{padding:20px 24px;max-width:210mm;margin:0 auto;page-break-after:always}
-    h2{font-size:13px;text-align:center;color:#2e3d5c;margin:0 0 2px;font-weight:700;text-transform:uppercase}
-    h3{font-size:11px;text-align:center;color:#444;margin:0 0 16px;font-weight:400}
-    .sec-title{font-size:12px;font-weight:700;color:#1a2a3a;margin:14px 0 6px;text-transform:uppercase}
-    .field-table{width:100%;border-collapse:collapse;margin-bottom:4px}
-    .field-table td{padding:3px 5px;font-size:12px;vertical-align:top}
-    .field-table .lbl{font-weight:700;width:150px;white-space:nowrap}
-    .field-table .sep{width:14px;color:#555}
-    .field-table .val{border-bottom:1px solid #bbb}
-    .inv-table{border-collapse:collapse;width:100%;font-size:11px;margin-bottom:4px}
-    .inv-table th{background:#3a4a6b;color:#fff;padding:5px 7px;text-align:left;font-size:11px;font-weight:700}
-    .inv-table td{border:1px solid #ccc;padding:4px 6px}
-    .inv-table tr:nth-child(even) td{background:#f5f6f8}
-    .arch-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px}
-    .arch-chip{border:1px solid #bbb;border-radius:3px;padding:3px 9px;font-size:11px;color:#333}
-    .obs-block{border:1px solid #bbb;border-radius:3px;margin-bottom:10px;overflow:hidden}
-    .obs-item{padding:6px 10px;border-bottom:1px solid #e0e4ea}
-    .obs-item:last-child{border-bottom:none}
-    .obs-item .ol{font-size:10px;font-weight:700;color:#3a4a6b;text-transform:uppercase}
-    .obs-item .ov{font-size:12px;min-height:18px}
-    @page{margin:15mm;size:A4}
-  </style></head><body><div class="page">
-  ${m==='recepcion'
-    ? `<h2>ACTA DE INVENTARIO DE EQUIPOS Y ELEMENTOS DE RIEGO</h2>
-       <h2>CONCURSO ${p['Concurso']||''}-${p['Año Concurso']||''} REGIÓN DE ÑUBLE, LEY 18.450</h2>`
-    : m==='inicio'
-    ? `<h2>ACTA DE VISITA INICIO DE OBRAS</h2>
-       <h2>CONCURSO ${p['Concurso']||''}-${p['Año Concurso']||''}, LEY 18.450</h2>`
-    : `<h2>ACTA DE SUPERVISIÓN DE PROYECTO ${p['Código Proyecto']||''}</h2>
-       <h2>LEY 18.450</h2>`
-  }
-
-  <div class="sec-title">1.- Identificación:</div>
-  <table class="field-table">
-    <tr><td class="lbl">Código del proyecto</td><td class="sep">:</td><td class="val">${p['Código Proyecto']||''}</td><td width="20"></td><td class="lbl">CBRD N°</td><td class="sep">:</td><td class="val">${p['CBRD']||''}</td></tr>
-    <tr><td class="lbl">Nombre del proyecto</td><td class="sep">:</td><td class="val" colspan="5">${p['Nombre proyecto']||''}</td></tr>
-    <tr><td class="lbl">Beneficiario</td><td class="sep">:</td><td class="val" colspan="5">${p['Nombre']||''}</td></tr>
-    <tr><td class="lbl">Representante</td><td class="sep">:</td><td class="val" colspan="5">${rec['_rep']||''}</td></tr>
-    <tr><td class="lbl">Rol</td><td class="sep">:</td><td class="val" colspan="5">${p['Rol']||''}</td></tr>
-    <tr><td class="lbl">Predio</td><td class="sep">:</td><td class="val" colspan="5">${p['Predio']||''}</td></tr>
-    <tr><td class="lbl">Provincia</td><td class="sep">:</td><td class="val">${p['Provincia']||''}</td><td></td><td class="lbl">Comuna</td><td class="sep">:</td><td class="val">${p['Comuna']||''}</td></tr>
-    ${!isT?`<tr><td class="lbl">Localidad</td><td class="sep">:</td><td class="val">${rec['_localidad']||''}</td><td></td><td class="lbl">Teléfono</td><td class="sep">:</td><td class="val">${p['Teléfono Contacto']||''}</td></tr>`:''}
-    <tr><td class="lbl">Coordenadas UTM</td><td class="sep">:</td><td class="val">N: ${p['Norte']||'—'} &nbsp; E: ${p['Este']||'—'} &nbsp; Huso: ${p['Huso']||'—'}</td><td></td><td class="lbl">Fecha</td><td class="sep">:</td><td class="val">${rec['_fecha']||''}</td></tr>
-  </table>
-
-  ${(m==='recepcion'||m==='visita')?`
-  <div class="sec-title">2.- Inventario${isT?' de Equipos y Elementos':' de Obras Civiles'}:</div>
-  <table class="inv-table">
-    ${isT
-      ?`<thead><tr><th>N°</th><th>Elemento</th><th>Modelo</th><th>Marca</th><th>Cant.</th><th>N° Serie</th></tr></thead><tbody>${invRows}</tbody>`
-      :`<thead><tr><th>N°</th><th>Cant.</th><th>Tipo Obra</th><th>Dimensiones relevantes</th><th>Coordenadas inicio y fin de obra</th><th>Obs. técnicas (Materiales, otros)</th></tr></thead><tbody>${invRows}</tbody>`}
-  </table>`:''}
-
-  ${m==='inicio'?`
-  <div class="sec-title">Datos de Inicio de Obras:</div>
-  <table class="field-table">
-    <tr><td class="lbl">Fecha inicio de obras</td><td class="sep">:</td><td class="val">${rec['_f_ini']||''}</td><td></td><td class="lbl">Plazo ejecución</td><td class="sep">:</td><td class="val">${rec['_plazo']||''} días</td></tr>
-    <tr><td class="lbl">Constructor</td><td class="sep">:</td><td class="val" colspan="5">${rec['_constr']||''}</td></tr>
-    <tr><td class="lbl">Profesional residente</td><td class="sep">:</td><td class="val" colspan="5">${rec['_resid']||''}</td></tr>
-  </table>
-  <div class="obs-block">
-    <div class="obs-item"><div class="ol">Condiciones al inicio</div><div class="ov">${rec['_cond']||''}</div></div>
-    <div class="obs-item"><div class="ol">Compromisos y acuerdos</div><div class="ov">${rec['_comp']||''}</div></div>
-    <div class="obs-item"><div class="ol">Pendientes</div><div class="ov">${rec['_obs_ini']||''}</div></div>
-  </div>`:''}
-
-  ${m==='visita'?`
-  <div class="sec-title">Visita de Supervisión Intermedia:</div>
-  <table class="field-table">
-    <tr><td class="lbl">Fecha visita</td><td class="sep">:</td><td class="val">${rec['_f_vis']||''}</td><td></td><td class="lbl">% Avance estimado</td><td class="sep">:</td><td class="val">${rec['_av']||0}%</td></tr>
-    <tr><td class="lbl">Etapa constructiva</td><td class="sep">:</td><td class="val" colspan="5">${rec['_etapa']||''}</td></tr>
-    <tr><td class="lbl">Conformidad</td><td class="sep">:</td><td class="val">${rec['_conf']||''}</td><td></td><td class="lbl">Plazo reparos</td><td class="sep">:</td><td class="val">${rec['_plaz_rep']||''} días</td></tr>
-  </table>
-  <div class="obs-block">
-    <div class="obs-item"><div class="ol">Observaciones técnicas</div><div class="ov">${rec['_obs_vis']||''}</div></div>
-    <div class="obs-item"><div class="ol">Acuerdos y compromisos</div><div class="ov">${rec['_acuerd']||''}</div></div>
-  </div>`:''}
-
-  ${(rec['_obs']||rec['_pend'])&&m==='recepcion'?`
-  <div class="obs-block">
-    <div class="obs-item"><div class="ol">Observación modificaciones u otro</div><div class="ov">${rec['_obs']||''}</div></div>
-    <div class="obs-item"><div class="ol">Pendientes a la recepción</div><div class="ov">${rec['_pend']||''}</div></div>
-  </div>`:''}
-
-  ${sigBlock}
-  </div>
+  // ── ESTILOS COMUNES ──────────────────────────────────────────────
+  const css=`
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Helvetica Neue',Arial,sans-serif;font-size:11.5px;color:#111;background:#fff}
+    .page{width:210mm;min-height:297mm;padding:14mm 16mm 14mm 16mm;page-break-after:always;position:relative}
+    /* ── Cabecera oficial ── */
+    .hdr-oficial{display:table;width:100%;margin-bottom:14px}
+    .hdr-logo{display:table-cell;width:72px;vertical-align:middle}
+    .hdr-logo img{width:64px;height:64px;object-fit:contain}
+    .hdr-titles{display:table-cell;vertical-align:middle;text-align:center;padding:0 8px}
+    .hdr-titles h1{font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.3px;line-height:1.35}
+    .hdr-titles h2{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.2px;margin-top:2px;line-height:1.3}
+    .hdr-spacer{display:table-cell;width:72px}
+    /* ── Sección título ── */
+    .sec-title{font-size:11.5px;font-weight:800;text-transform:uppercase;margin:12px 0 5px;letter-spacing:.1px}
+    /* ── Tabla campos identificación ── */
+    .id-table{width:100%;border-collapse:collapse;margin-bottom:2px}
+    .id-table td{padding:3.5px 4px;font-size:11px;vertical-align:top}
+    .id-table .lbl{font-weight:700;width:138px;white-space:nowrap}
+    .id-table .sep{width:12px;text-align:center;color:#333}
+    .id-table .val{border-bottom:1px solid #999;min-width:80px}
+    .id-table .val-wide{border-bottom:1px solid #999}
+    /* ── Tabla inventario ── */
+    .inv-table{border-collapse:collapse;width:100%;font-size:10.5px;margin-top:4px}
+    .inv-table th{border:1px solid #111;padding:5px 6px;text-align:left;font-weight:700;background:#fff;font-size:10.5px}
+    .inv-table td{border:1px solid #555;padding:4px 6px;vertical-align:top}
+    .inv-table .num{text-align:center;width:28px}
+    .inv-table .cant{text-align:center;width:42px}
+    .inv-table .serie{text-align:right;width:80px}
+    /* ── Bloque observaciones ── */
+    .obs-block{border:1px solid #bbb;margin:8px 0;page-break-inside:avoid}
+    .obs-row{padding:5px 8px;border-bottom:1px solid #ddd}
+    .obs-row:last-child{border-bottom:none}
+    .obs-lbl{font-size:9.5px;font-weight:700;text-transform:uppercase;color:#444;margin-bottom:2px}
+    .obs-val{font-size:11px;min-height:16px}
+    /* ── Firma ── */
+    .sig-wrap{margin-top:36px;text-align:center;page-break-inside:avoid}
+    .sig-img{height:72px;display:block;margin:0 auto}
+    .sig-line{border-top:1px solid #111;width:240px;margin:0 auto}
+    .sig-name{font-size:11px;font-weight:700;margin-top:5px}
+    .sig-cargo{font-size:10px;color:#444;margin-top:2px}
+    /* ── Fotos ── */
+    .foto-grid{width:100%;border-collapse:collapse;margin-top:10px}
+    .foto-grid td{padding:5px;text-align:center;vertical-align:top;width:33.33%}
+    .foto-grid img{width:100%;height:148px;object-fit:cover;border:1px solid #bbb;display:block}
+    @page{size:A4;margin:0}
+    @media print{.page{page-break-after:always}}
   `;
 
-  // PAGE 2: Fotos
-  let page2='';
-  if(photos.length){
-    const phCells=photos.map((ph,i)=>
-      `<td style="padding:6px;text-align:center;vertical-align:top">
-        <img src="${ph}" style="width:${PHW}px;height:${PHH}px;object-fit:cover;border:1px solid #ccc;display:block">
-        <div style="font-size:9px;color:#666;margin-top:3px">Foto ${i+1}</div>
-      </td>`
-    );
-    let rows='';
-    for(let i=0;i<phCells.length;i+=cols){
-      rows+=`<tr>${phCells.slice(i,i+cols).join('')}</tr>`;
-    }
-    page2=`
-  <div class="page">
-    <h2>REGISTRO FOTOGRÁFICO</h2>
-    <table style="border-collapse:collapse;width:100%;margin-top:12px">${rows}</table>
-  </div>`;
+  // ── CABECERA OFICIAL (logo + títulos) ─────────────────────────────
+  const hdrOficial=(titulo1,titulo2)=>`
+    <div class="hdr-oficial">
+      <div class="hdr-logo"><img src="${logoSrc}" alt="CNR"></div>
+      <div class="hdr-titles">
+        <h1>${titulo1}</h1>
+        <h2>${titulo2}</h2>
+      </div>
+      <div class="hdr-spacer"></div>
+    </div>`;
+
+  // ── TABLA IDENTIFICACIÓN ─────────────────────────────────────────
+  const concurso=`${p['Concurso']||''} - ${p['Año Concurso']||''}`;
+  const idTable=(extraRows='')=>`
+    <table class="id-table">
+      <tr><td class="lbl">Nombre del proyecto</td><td class="sep">:</td><td class="val-wide" colspan="4">${x(p['Nombre proyecto']||'')}</td></tr>
+      <tr>
+        <td class="lbl">Código proyecto</td><td class="sep">:</td><td class="val">${x(p['Código Proyecto']||'')}</td>
+        <td width="20"></td>
+        <td class="lbl" style="width:60px">CBRD</td><td class="sep">:</td><td class="val">${x(p['CBRD']||'')}</td>
+      </tr>
+      <tr><td class="lbl">Beneficiario/a</td><td class="sep">:</td><td class="val-wide" colspan="4">${x(p['Nombre']||'')}</td></tr>
+      <tr><td class="lbl">Representante</td><td class="sep">:</td><td class="val-wide" colspan="4">${x(rec['_rep']||'')}</td></tr>
+      <tr><td class="lbl">Rol</td><td class="sep">:</td><td class="val-wide" colspan="4">${x(p['Rol']||'')}</td></tr>
+      <tr><td class="lbl">Predio</td><td class="sep">:</td><td class="val-wide" colspan="4">${x(p['Predio']||'')}</td></tr>
+      <tr>
+        <td class="lbl">Provincia</td><td class="sep">:</td><td class="val">${x(p['Provincia']||'')}</td>
+        <td width="20"></td>
+        <td class="lbl" style="width:60px">Comuna</td><td class="sep">:</td><td class="val">${x(p['Comuna']||'')}</td>
+      </tr>
+      <tr><td class="lbl">Fecha recepción</td><td class="sep">:</td><td class="val-wide" colspan="4">${x(rec['_fecha']||'')}</td></tr>
+      ${extraRows}
+    </table>`;
+
+  // ── TABLA INVENTARIO TECNIFICACIÓN ───────────────────────────────
+  let invRows='';
+  if(isT){
+    invRows=items.map((it,i)=>`
+      <tr>
+        <td class="num">${i+1}</td>
+        <td>${x(it.elem||'')}</td>
+        <td>${x(it.mod||'')}</td>
+        <td>${x(it.marc||'')}</td>
+        <td class="cant">${x(it.cant||'')}</td>
+        <td class="serie">${x(it.ser||'')}</td>
+      </tr>`).join('');
+  } else {
+    invRows=items.map((it,i)=>`
+      <tr>
+        <td class="num">${i+1}</td>
+        <td class="cant">${x(it.cant||'')}</td>
+        <td>${x(it.tipo||'')}</td>
+        <td>${x(it.dim||'')}</td>
+        <td>${x(it.coo||'')}</td>
+        <td>${x(it.obs||'')}</td>
+      </tr>`).join('');
   }
 
-  return page1+page2+`</body></html>`;
+  const invTable=isT
+    ?`<table class="inv-table">
+        <thead><tr>
+          <th class="num">N°</th><th>Elemento</th><th>Modelo</th><th>Marca</th><th class="cant">Cant.</th><th class="serie">N° Serie</th>
+        </tr></thead>
+        <tbody>${invRows}</tbody>
+      </table>`
+    :`<table class="inv-table">
+        <thead><tr>
+          <th class="num">N°</th><th class="cant">Cant.</th><th>Tipo Obra</th><th>Dimensiones relevantes</th><th>Coordenadas inicio y fin</th><th>Obs. técnicas</th>
+        </tr></thead>
+        <tbody>${invRows}</tbody>
+      </table>`;
+
+  // ── FIRMA ─────────────────────────────────────────────────────────
+  const sigBlock=sig
+    ?`<div class="sig-wrap">
+        <img src="${sig}" class="sig-img" alt="Firma">
+        <div class="sig-line"></div>
+        <div class="sig-name">${supName}</div>
+        <div class="sig-cargo">Supervisor Técnico de Obras<br>CNR Ñuble</div>
+      </div>`
+    :`<div class="sig-wrap">
+        <div class="sig-line"></div>
+        <div class="sig-name">${supName}</div>
+        <div class="sig-cargo">Supervisor Técnico de Obras<br>CNR Ñuble</div>
+      </div>`;
+
+  // ── FOTOS ─────────────────────────────────────────────────────────
+  let page2='';
+  if(photos.length){
+    const cells=photos.map(ph=>`<td><img src="${ph}" alt=""></td>`);
+    let rows='';
+    for(let i=0;i<cells.length;i+=3) rows+=`<tr>${cells.slice(i,i+3).join('')}</tr>`;
+    page2=`<div class="page">
+      ${hdrOficial('REGISTRO FOTOGRÁFICO',`CONCURSO ${concurso} &nbsp;·&nbsp; REGIÓN DE ÑUBLE, LEY 18.450`)}
+      <table class="foto-grid">${rows}</table>
+    </div>`;
+  }
+
+  // ══ MODO RECEPCIÓN ════════════════════════════════════════════════
+  if(m==='recepcion'){
+    const obsBlock=(rec['_obs']||rec['_pend'])?`
+      <div class="obs-block">
+        <div class="obs-row"><div class="obs-lbl">Observación modificaciones u otro</div><div class="obs-val">${x(rec['_obs']||'')}</div></div>
+        <div class="obs-row"><div class="obs-lbl">Pendientes a la recepción</div><div class="obs-val">${x(rec['_pend']||'')}</div></div>
+      </div>`:'';
+
+    const page1=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Acta Recepción ${p['Código Proyecto']}</title>
+      <style>${css}</style></head><body>
+      <div class="page">
+        ${hdrOficial('ACTA DE INVENTARIO DE EQUIPOS Y ELEMENTOS DE RIEGO',`CONCURSO ${concurso} , REGIÓN DE ÑUBLE , LEY 18.450`)}
+        <div class="sec-title">1.- Identificación:</div>
+        ${idTable()}
+        <div class="sec-title">2.- Inventario${isT?' de Equipos y Elementos':' de Obras Civiles'}:</div>
+        ${invTable}
+        ${obsBlock}
+        ${sigBlock}
+      </div>
+      ${page2}
+      </body></html>`;
+    return page1;
+  }
+
+  // ══ MODO INICIO ═══════════════════════════════════════════════════
+  if(m==='inicio'){
+    const page1=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Acta Inicio ${p['Código Proyecto']}</title>
+      <style>${css}</style></head><body>
+      <div class="page">
+        ${hdrOficial('ACTA DE VISITA INICIO DE OBRAS',`CONCURSO ${concurso}, LEY 18.450`)}
+        <div class="sec-title">1.- Identificación:</div>
+        ${idTable()}
+        <div class="sec-title">Datos de Inicio de Obras:</div>
+        <table class="id-table">
+          <tr><td class="lbl">Fecha inicio de obras</td><td class="sep">:</td><td class="val">${x(rec['_f_ini']||'')}</td><td width="20"></td><td class="lbl">Plazo ejecución</td><td class="sep">:</td><td class="val">${x(rec['_plazo']||'')} días</td></tr>
+          <tr><td class="lbl">Constructor</td><td class="sep">:</td><td class="val-wide" colspan="4">${x(rec['_constr']||'')}</td></tr>
+          <tr><td class="lbl">Profesional residente</td><td class="sep">:</td><td class="val-wide" colspan="4">${x(rec['_resid']||'')}</td></tr>
+        </table>
+        <div class="obs-block" style="margin-top:8px">
+          <div class="obs-row"><div class="obs-lbl">Condiciones al inicio</div><div class="obs-val">${x(rec['_cond']||'')}</div></div>
+          <div class="obs-row"><div class="obs-lbl">Compromisos y acuerdos</div><div class="obs-val">${x(rec['_comp']||'')}</div></div>
+          <div class="obs-row"><div class="obs-lbl">Pendientes</div><div class="obs-val">${x(rec['_obs_ini']||'')}</div></div>
+        </div>
+        ${sigBlock}
+      </div>
+      ${page2}
+      </body></html>`;
+    return page1;
+  }
+
+  // ══ MODO VISITA ═══════════════════════════════════════════════════
+  const page1=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Acta Supervisión ${p['Código Proyecto']}</title>
+    <style>${css}</style></head><body>
+    <div class="page">
+      ${hdrOficial(`ACTA DE SUPERVISIÓN — PROYECTO ${x(p['Código Proyecto']||'')}`, 'LEY 18.450')}
+      <div class="sec-title">1.- Identificación:</div>
+      ${idTable()}
+      <div class="sec-title">Visita de Supervisión Intermedia:</div>
+      <table class="id-table">
+        <tr><td class="lbl">Fecha visita</td><td class="sep">:</td><td class="val">${x(rec['_f_vis']||'')}</td><td width="20"></td><td class="lbl">% Avance</td><td class="sep">:</td><td class="val">${x(rec['_av']||'0')}%</td></tr>
+        <tr><td class="lbl">Etapa constructiva</td><td class="sep">:</td><td class="val-wide" colspan="4">${x(rec['_etapa']||'')}</td></tr>
+        <tr><td class="lbl">Conformidad</td><td class="sep">:</td><td class="val">${x(rec['_conf']||'')}</td><td width="20"></td><td class="lbl">Plazo reparos</td><td class="sep">:</td><td class="val">${x(rec['_plaz_rep']||'')} días</td></tr>
+      </table>
+      <div class="obs-block" style="margin-top:8px">
+        <div class="obs-row"><div class="obs-lbl">Observaciones técnicas</div><div class="obs-val">${x(rec['_obs_vis']||'')}</div></div>
+        <div class="obs-row"><div class="obs-lbl">Acuerdos y compromisos</div><div class="obs-val">${x(rec['_acuerd']||'')}</div></div>
+      </div>
+      ${invTable?`<div class="sec-title">Inventario:</div>${invTable}`:''}
+      ${sigBlock}
+    </div>
+    ${page2}
+    </body></html>`;
+  return page1;
 }
 
 function getPDFData(){
