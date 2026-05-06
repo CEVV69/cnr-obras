@@ -108,14 +108,14 @@ body{background:#b8bec8}
   flex-shrink:0;display:flex;align-items:center;
   padding:6px 10px;gap:8px;min-height:66px;
 }
-#hdr .pwr{width:36px;height:36px;border-radius:5px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px;cursor:pointer;flex-shrink:0;line-height:1}
+#hdr .pwr{width:36px;height:36px;border-radius:5px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px;cursor:pointer;flex-shrink:0;line-height:1;padding:0;margin:0}
 #hdr .logo{width:50px;height:50px;border-radius:50%;overflow:hidden;display:flex;flex-shrink:0;background:#fff}
 #hdr .logo img{width:100%;height:100%;object-fit:cover}
 #hdr .htitle{flex:1;color:#fff;text-align:center;line-height:1.25;padding:0 4px}
 #hdr .htitle .t1{font-size:13px;font-weight:700;letter-spacing:.1px}
 #hdr .htitle .t2{font-size:11px;opacity:.85;margin-top:1px}
 #hdr .hicons{display:flex;gap:4px;flex-shrink:0}
-.hico{width:36px;height:36px;background:linear-gradient(145deg,#6a7a9a,#3d4f72);border:1px solid rgba(255,255,255,.25);border-radius:5px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;color:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3);line-height:1}
+.hico{width:36px;height:36px;background:linear-gradient(145deg,#6a7a9a,#3d4f72);border:1px solid rgba(255,255,255,.25);border-radius:5px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;color:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3);line-height:1;padding:0;margin:0}
 .hico:active{opacity:.75}
 
 /* =====================================================
@@ -1828,36 +1828,27 @@ function importProject(){
           return;
         }
         
-        // Detectar conflictos solo con lo que YA ESTÁ en la app
-        const conflicts=[];
-        for(const proj of data.allProjects){
-          const cod=proj['Código Proyecto'];
-          // Buscar solo en S.allProjects (lo que la app tiene)
-          if(S.allProjects.some(p=>p['Código Proyecto']===cod)){
-            conflicts.push(cod);
-          }
-        }
+        // Detectar conflictos: ¿ya están los proyectos importados en S.openCodes?
+        const codesToImport=data.openCodes||data.allProjects.map(p=>p['Código Proyecto']);
+        const conflicts=codesToImport.filter(cod=>S.openCodes.includes(cod));
         
-        // Si hay conflictos, preguntar qué hacer con TODOS
+        // Si hay conflictos, preguntar qué hacer
         let replace=true;
         if(conflicts.length>0){
-          replace=confirm(`${conflicts.length} proyecto(s) ya existen:\n${conflicts.join(', ')}\n\n¿Reemplazarlos?`);
+          replace=confirm(`${conflicts.length} proyecto(s) ya importados:\n${conflicts.join(', ')}\n\n¿Reemplazarlos?`);
         }
         
         // Importar
         let imported=0;
         for(const proj of data.allProjects){
           const cod=proj['Código Proyecto'];
-          const idx=S.allProjects.findIndex(p=>p['Código Proyecto']===cod);
+          const idx=S.openCodes.indexOf(cod);
           if(idx>=0){
-            // Existe
-            if(replace){
-              S.allProjects[idx]=proj;
-              imported++;
-            }
+            // Ya importado
+            if(replace) imported++;
           } else {
-            // No existe
-            S.allProjects.push(proj);
+            // Nuevo
+            S.openCodes.push(cod);
             imported++;
           }
         }
