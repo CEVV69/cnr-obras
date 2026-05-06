@@ -439,10 +439,10 @@ body{background:#b8bec8}
       <div class="t2" id="hdr-subtitle" style="display:none"></div>
     </div>
     <div class="hicons">
-      <div class="hico" onclick="openInfo()" title="Más información">ℹ️</div>
-      <div class="hico" onclick="doEmail()" title="Enviar por correo">✉️</div>
-      <div class="hico" onclick="doPDF(false)" title="Vista previa">📄</div>
-      <div class="hico" onclick="doPDF(true)" title="Imprimir">🖨️</div>
+      <div class="hico" onclick="openInfo()" id="btn-info" title="Más información" style="display:none">ℹ️</div>
+      <div class="hico" onclick="doEmail()" id="btn-email" title="Enviar por correo" style="display:none">✉️</div>
+      <div class="hico" onclick="doPDF(false)" id="btn-preview" title="Vista previa" style="display:none">📄</div>
+      <div class="hico" onclick="doPDF(true)" id="btn-print" title="Imprimir" style="display:none">🖨️</div>
       <div class="hico hico-install" id="btn-install" onclick="installApp()" title="Instalar aplicación" style="display:none">📲</div>
       <div class="hico" onclick="openAdmin()" id="btn-config-header" title="Configuración">⚙️</div>
     </div>
@@ -499,22 +499,21 @@ body{background:#b8bec8}
 
       <!-- SYNC BUTTONS -->
       <div class="sync-row">
-        <button class="sync-btn export" onclick="exportJSON()">
-          <span class="sb-icon">📤</span>
+        <button class="sync-btn export" onclick="exportProject()">
+          <span class="sb-icon">💾</span>
           <span class="sb-text">
-            <div class="sb-title">Exportar datos</div>
-            <div class="sb-sub">Guardar todo para llevar al tablet</div>
+            <div class="sb-title">Exportar proyecto</div>
+            <div class="sb-sub">Guardar proyecto actual</div>
           </span>
         </button>
-        <button class="sync-btn import" onclick="document.getElementById('json-inp').click()">
-          <span class="sb-icon">📥</span>
+        <button class="sync-btn import" onclick="importProject()">
+          <span class="sb-icon">📂</span>
           <span class="sb-text">
-            <div class="sb-title">Importar datos</div>
-            <div class="sb-sub">Cargar datos desde otro dispositivo</div>
+            <div class="sb-title">Importar proyecto</div>
+            <div class="sb-sub">Cargar proyecto desde archivo</div>
           </span>
         </button>
       </div>
-      <input type="file" id="json-inp" accept=".json" style="display:none" onchange="importJSON(event)">
       <div id="storage-info" style="font-size:11px;color:#667;text-align:center;width:100%;max-width:420px">
         Cargando información de almacenamiento...
       </div>
@@ -728,22 +727,22 @@ function updateStorageInfo(){
 
 /* ── PORTADA ──────────────────────────────────────── */
 function showPortada(){
-  console.log('[showPortada] showing portada screen');
   const el1=document.getElementById('screen-portada');
   const el2=document.getElementById('screen-form');
   const el3=document.getElementById('recbar');
-  const el4=document.getElementById('hdr-title');
-  const btnCfg=document.getElementById('btn-config-header');
-  const btnExp=document.getElementById('btn-export-proj');
-  const btnImp=document.getElementById('btn-import-proj');
   
   if(el1)el1.style.display='flex';
   if(el2)el2.style.display='none';
   if(el3)el3.style.display='none';
-  if(el4)el4.textContent='ACTA DE INVENTARIO DE EQUIPOS Y ELEMENTOS DE RIEGO';
-  if(btnCfg)btnCfg.style.display='block';
-  if(btnExp)btnExp.style.display='none';
-  if(btnImp)btnImp.style.display='none';
+  
+  // Hide all form buttons, show only config
+  document.getElementById('btn-export-proj').style.display='none';
+  document.getElementById('btn-import-proj').style.display='none';
+  document.getElementById('btn-info').style.display='none';
+  document.getElementById('btn-email').style.display='none';
+  document.getElementById('btn-preview').style.display='none';
+  document.getElementById('btn-print').style.display='none';
+  document.getElementById('btn-config-header').style.display='block';
 }
 
 function goPortada(){
@@ -863,13 +862,21 @@ function renderCurrent(){
   document.getElementById('mod-label').textContent=ML[S.mod];
   document.getElementById('sep-sel').value=rec['_sep']||'No';
   
-  // Header buttons: hide config, show export/import in form screens
+  // Header buttons: hide config, show export/import/info/email/preview/print in form screens
   const btnCfg=document.getElementById('btn-config-header');
   const btnExp=document.getElementById('btn-export-proj');
   const btnImp=document.getElementById('btn-import-proj');
+  const btnInfo=document.getElementById('btn-info');
+  const btnEmail=document.getElementById('btn-email');
+  const btnPreview=document.getElementById('btn-preview');
+  const btnPrint=document.getElementById('btn-print');
   if(btnCfg)btnCfg.style.display='none';
   if(btnExp)btnExp.style.display='block';
   if(btnImp)btnImp.style.display='block';
+  if(btnInfo)btnInfo.style.display='block';
+  if(btnEmail)btnEmail.style.display='block';
+  if(btnPreview)btnPreview.style.display='block';
+  if(btnPrint)btnPrint.style.display='block';
 
   // Bottom nav
   document.getElementById('nav-num').textContent=S.ci+1;
@@ -1804,9 +1811,20 @@ function importProject(){
         for(const proj of data.allProjects){
           const cod=proj['Código Proyecto'];
           const exists=S.allProjects.find(p=>p['Código Proyecto']===cod);
-          if(exists){if(confirm(`Proyecto ${cod} ya existe.\n¿Reemplazarlo?`)){const idx=S.allProjects.findIndex(p=>p['Código Proyecto']===cod);S.allProjects[idx]=proj;imported++;}}
-          else{S.allProjects.push(proj);imported++;}
+          if(exists){
+            // Solo preguntar si ya existe
+            if(confirm(`Proyecto ${cod} ya existe.\n¿Reemplazarlo?`)){
+              const idx=S.allProjects.findIndex(p=>p['Código Proyecto']===cod);
+              S.allProjects[idx]=proj;
+              imported++;
+            }
+          } else {
+            // No existe → cargar directamente sin preguntar
+            S.allProjects.push(proj);
+            imported++;
+          }
         }
+        // Fusionar datos de este archivo
         Object.assign(S.rec,data.rec||{});
         Object.assign(S.inv,data.inv||{});
         Object.assign(S.ph,data.ph||{});
@@ -1814,7 +1832,8 @@ function importProject(){
         Object.assign(S.sigs,data.sigs||{});
         persist();
         toast(`✅ ${imported} proyecto(s) importado(s)`,3000);
-        renderCurrent();
+        if(S.openCodes.length) renderCurrent();
+        else showPortada();
       }catch(err){console.error('Import error:',err);toast('⚠️ Error al importar');}
     };
     fr.readAsText(file);
