@@ -688,21 +688,20 @@ function loadFromDB(){
           if(old){S={...S,...JSON.parse(old)};persist();localStorage.removeItem(SK);}
         }
         
-        // Migrate old file keys: f_cod_MOD_slot → f_cod_slot
-        const newFiles={};
-        for(const [k,v] of Object.entries(S.files||{})){
-          if(k.match(/^f_[^_]+_(inicio|visita|recepcion)_/)){
-            // Old format: extract cod and slot
+        // Migrate old inventory keys: inv_cod_mod → inv_cod_datos
+        const newInv={};
+        for(const [k,v] of Object.entries(S.inv||{})){
+          if(k.match(/^inv_[^_]+_(inicio|visita|recepcion)$/)){
+            // Old format: extract cod
             const parts=k.split('_');
             const cod=parts[1]; // e.g., "203-2021-16-010"
-            const slot=parts.slice(3).join('_'); // e.g., "Presupuesto"
-            const newK=`f_${cod}_${slot}`;
-            if(!newFiles[newK]) newFiles[newK]=v; // Keep first occurrence
+            const newK=`inv_${cod}_datos`;
+            if(!newInv[newK]) newInv[newK]=v; // Keep first occurrence
           } else {
-            newFiles[k]=v; // New format or other keys
+            newInv[k]=v; // New format or other keys
           }
         }
-        S.files=newFiles;
+        S.inv=newInv;
       }catch(ex){}
       res();
     };
@@ -1005,7 +1004,7 @@ function bIdent(p,isT,rec){
 
 /* ── INVENTARIO ─────────────────────────────────── */
 function bInvT(p,m){
-  const ik=`inv_${p['Código Proyecto']}_${m==='recepcion'?'recepcion':'datos'}`;
+  const ik=`inv_${p['Código Proyecto']}_datos`;
   const items=S.inv[ik]||[{}];
   const rows=items.map((it,i)=>`<tr>
     <td class="nc">${i+1}</td>
@@ -1028,7 +1027,7 @@ function bInvT(p,m){
 }
 
 function bInvC(p,m){
-  const ik=`inv_${p['Código Proyecto']}_${m==='recepcion'?'recepcion':'datos'}`;
+  const ik=`inv_${p['Código Proyecto']}_datos`;
   const items=S.inv[ik]||[{}];
   const rows=items.map((it,i)=>`<tr>
     <td class="nc">${i+1}</td>
