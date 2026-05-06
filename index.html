@@ -1359,11 +1359,11 @@ function buildPDFHTML(p,m,rec,isT,items,photos,sig){
   const css=`
     *{box-sizing:border-box;margin:0;padding:0}
     body{font-family:Arial,Helvetica,sans-serif;font-size:11.5px;color:#111;background:#fff}
-    .page{width:216mm;min-height:279mm;padding:16mm 18mm 16mm 18mm;page-break-after:always;position:relative}
-    .page-last{width:216mm;min-height:279mm;padding:16mm 18mm 16mm 18mm;position:relative}
+    .page{width:216mm;min-height:279mm;padding:11mm 18mm 16mm 18mm;page-break-after:always;position:relative}
+    .page-last{width:216mm;min-height:279mm;padding:11mm 18mm 16mm 18mm;position:relative}
     /* Cabecera */
-    .hdr{display:table;width:100%;margin-bottom:16px}
-    .hdr-logo{display:table-cell;width:70px;vertical-align:middle}
+    .hdr{display:table;width:100%;margin-bottom:16px;margin-top:-5mm}
+    .hdr-logo{display:table-cell;width:70px;vertical-align:top;padding-top:0}
     .hdr-logo img{width:60px;height:60px;object-fit:contain}
     .hdr-txt{display:table-cell;vertical-align:middle;text-align:center;padding:0 8px}
     .hdr-txt h1{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.2px;line-height:1.4}
@@ -1402,6 +1402,16 @@ function buildPDFHTML(p,m,rec,isT,items,photos,sig){
     .fg{width:100%;border-collapse:collapse;margin-top:12px}
     .fg td{padding:4px;vertical-align:top;width:33.33%}
     .fg-img{width:100%;height:120px;border:1px solid #ccc;background-size:cover;background-position:center center;background-repeat:no-repeat}
+    /* Tabla identificación Obras Civiles — con bordes */
+    .oc-hdr{border-collapse:collapse;width:100%;font-size:11px;margin-bottom:0}
+    .oc-hdr td{border:1px solid #444;padding:4px 7px;vertical-align:top;line-height:1.4}
+    .oc-hdr .oc-lb{font-weight:700;white-space:nowrap}
+    .oc-hdr .oc-vl{font-weight:400}
+    .oc-top{border-collapse:collapse;width:100%;font-size:11px;margin-bottom:0}
+    .oc-top td{border:none;padding:2px 0;font-size:11px}
+    /* Observaciones Obras Civiles */
+    .oc-obs{border:1px solid #444;padding:6px 8px;margin-top:8px;font-size:11px;min-height:40px}
+    .oc-obs-lb{font-weight:700;margin-bottom:3px}
     @page{size:letter;margin:0}
     @media print{.page,.page-last{page-break-after:always}}
   `;
@@ -1480,24 +1490,159 @@ function buildPDFHTML(p,m,rec,isT,items,photos,sig){
 
   // ══ RECEPCIÓN ════════════════════════════════════════════════════
   if(m==='recepcion'){
-    const secInv=isT?'2.- INVENTARIO DE EQUIPOS Y ELEMENTOS:':'2.- INVENTARIO DE OBRAS CIVILES:';
-    const obsBlock=(rec['_obs']||rec['_pend'])?`
-      <div class="obs">
-        <div class="ob-r"><div class="ob-l">Observación modificaciones u otro</div><div class="ob-v">${x(rec['_obs']||'')}</div></div>
-        <div class="ob-r"><div class="ob-l">Pendientes a la recepción</div><div class="ob-v">${x(rec['_pend']||'')}</div></div>
-      </div>`:'';
     const pg1cls=photos.length?'page':'page-last';
+
+    // ── TECNIFICACIÓN ──────────────────────────────────────────────
+    if(isT){
+      const obsBlock=(rec['_obs']||rec['_pend'])?`
+        <div class="obs">
+          <div class="ob-r"><div class="ob-l">Observación modificaciones u otro</div><div class="ob-v">${x(rec['_obs']||'')}</div></div>
+          <div class="ob-r"><div class="ob-l">Pendientes a la recepción</div><div class="ob-v">${x(rec['_pend']||'')}</div></div>
+        </div>`:'';
+      return docOpen+`
+        <div class="${pg1cls}">
+          ${hdr('ACTA DE INVENTARIO DE EQUIPOS Y ELEMENTOS DE RIEGO',`CONCURSO ${concurso} , REGIÓN DE ÑUBLE , LEY 18.450`)}
+          <div class="sec sec-id">1.- IDENTIFICACIÓN:</div>
+          ${idT()}
+          <div class="sec sec-inv">2.- INVENTARIO DE EQUIPOS Y ELEMENTOS:</div>
+          ${invTable}
+          ${obsBlock}
+          ${sigPag1}
+        </div>
+        ${fotoPages}
+      `+docClose;
+    }
+
+    // ── OBRAS CIVILES — formato oficial ────────────────────────────
+    const cbrd=x(p['CBRD']||'');
+
+    // Cabecera OC: logo izq, título centro en 2 líneas, CBRD+FECHA a la derecha con subrayado
+    const hdrOC=`
+      <div style="display:table;width:100%;margin-bottom:14px">
+        <div style="display:table-cell;width:72px;vertical-align:middle">
+          <img src="${logoSrc}" alt="CNR" style="width:64px;height:64px;object-fit:contain">
+        </div>
+        <div style="display:table-cell;vertical-align:middle;text-align:center;padding:0 8px">
+          <div style="font-size:13.5px;font-weight:700;text-transform:uppercase;line-height:1.4">INVENTARIO DE PROYECTOS DE OBRAS</div>
+          <div style="font-size:13.5px;font-weight:700;text-transform:uppercase;line-height:1.4">CIVILES BONIFICADOS LEY 18.450</div>
+        </div>
+        <div style="display:table-cell;width:110px;vertical-align:middle;text-align:right;font-size:10.5px">
+          <div style="margin-bottom:2px">CBRD N°&nbsp;&nbsp;<strong style="font-size:12.5px">${cbrd}</strong></div>
+          <div style="border-bottom:1px solid #111;margin-bottom:6px"></div>
+          <div>FECHA:&nbsp;&nbsp;${x(rec['_fecha']||'')}</div>
+          <div style="border-bottom:1px solid #111"></div>
+        </div>
+      </div>`;
+
+    // Tabla antecedentes OC — con bordes, estructura exacta del PDF oficial
+    const idOC=`
+      <table style="border-collapse:collapse;width:100%;font-size:10.5px">
+        <tr>
+          <td colspan="6" style="border:1px solid #444;padding:6px 8px;min-height:30px">
+            <strong>Proyecto:</strong>&nbsp;&nbsp;${x(p['Nombre proyecto']||'')}
+          </td>
+        </tr>
+        <tr>
+          <td colspan="2" style="border:1px solid #444;padding:5px 8px;width:34%">
+            <strong>Código proyecto:</strong>&nbsp;&nbsp;${x(p['Código Proyecto']||'')}
+          </td>
+          <td colspan="2" style="border:1px solid #444;padding:5px 8px;width:28%">
+            <strong>N° Concurso:</strong>&nbsp;&nbsp;${concurso}
+          </td>
+          <td colspan="2" style="border:1px solid #444;padding:5px 8px">
+            <strong>Fecha recepción técnica:</strong>&nbsp;&nbsp;${x(rec['_fecha']||'')}
+          </td>
+        </tr>
+        <tr>
+          <td colspan="6" style="border:1px solid #444;padding:6px 8px;min-height:26px">
+            <strong>Beneficiario:</strong>&nbsp;&nbsp;${x(p['Nombre']||'')}
+          </td>
+        </tr>
+        <tr>
+          <td colspan="6" style="border:1px solid #444;padding:6px 8px;min-height:26px">
+            <strong>Predio :</strong>&nbsp;&nbsp;${x(p['Predio']||'')}
+          </td>
+        </tr>
+        <tr>
+          <td style="border:1px solid #444;padding:5px 8px;width:20%"><strong>Rol(es) de avalúo:</strong><br>${x(p['Rol']||'')}</td>
+          <td style="border:1px solid #444;padding:5px 8px;width:16%"><strong>Comuna:</strong><br>${x(p['Comuna']||'')}</td>
+          <td style="border:1px solid #444;padding:5px 8px;width:16%"><strong>Provincia:</strong><br>${x(p['Provincia']||'')}</td>
+          <td style="border:1px solid #444;padding:5px 8px;width:12%"><strong>Región:</strong><br>Ñuble</td>
+          <td colspan="2" style="border:1px solid #444;padding:5px 8px"><strong>Localidad:</strong><br>${x(rec['_localidad']||'')}</td>
+        </tr>
+        <tr>
+          <td colspan="2" style="border:1px solid #444;padding:5px 8px"><strong>Coordenadas UTM</strong></td>
+          <td style="border:1px solid #444;padding:5px 8px"><strong>Este:</strong>&nbsp;${x(p['Este']||'')}</td>
+          <td style="border:1px solid #444;padding:5px 8px"><strong>Norte:</strong>&nbsp;${x(p['Norte']||'')}</td>
+          <td style="border:1px solid #444;padding:5px 8px"><strong>Huso:</strong>&nbsp;${x(p['Huso']||'')}</td>
+          <td style="border:1px solid #444;padding:5px 8px"><strong>Datum:</strong>&nbsp;WGS84</td>
+        </tr>
+        <tr>
+          <td colspan="6" style="border:1px solid #444;padding:5px 8px">
+            <strong>Fono, correo de contacto Beneficiario:</strong>&nbsp;&nbsp;${x(p['Teléfono Contacto']||'')}
+            &nbsp;&nbsp;&nbsp;&nbsp;${x(p['Email']||rec['_email']||'')}
+          </td>
+        </tr>
+      </table>`;
+
+    // Inventario OC — columnas exactas del PDF oficial: N° | Cant. | Tipo de obra | Dimensiones | Coordenadas | Obs.técnicas
+    const invOC=`
+      <div class="sec sec-inv">2.- INVENTARIO (registrar coordenadas en los casos que corresponda)</div>
+      <table class="inv" style="table-layout:fixed;width:100%">
+        <colgroup>
+          <col style="width:24px"><col style="width:36px"><col style="width:18%">
+          <col style="width:22%"><col style="width:22%"><col>
+        </colgroup>
+        <thead><tr>
+          <th class="nc">N°</th>
+          <th class="ca">Cant.</th>
+          <th>Tipo de obra</th>
+          <th style="text-align:center">Dimensiones<br>relevantes</th>
+          <th style="text-align:center">Coordenadas inicio y<br>fin de obra</th>
+          <th style="text-align:center">Observaciones técnicas<br>(Materiales, otros)</th>
+        </tr></thead>
+        <tbody>${invRows}</tbody>
+      </table>`;
+
+    // Observaciones — solo si hay contenido, sin bordes, etiqueta en negrita
+    const obsOC=rec['_obs']?`
+      <div style="margin-top:14px;font-size:10.5px">
+        <div style="font-weight:700;margin-bottom:4px">Observaciones:</div>
+        <div>${x(rec['_obs'])}</div>
+      </div>`:'';
+
+    // Fotos OC: 2 columnas, título "ANEXO INVENTARIO CBRD N°...", firma al final
+    let fotoPagesOC='';
+    if(photos.length){
+      const fpp=4;
+      const chunks=[];
+      for(let i=0;i<photos.length;i+=fpp) chunks.push(photos.slice(i,i+fpp));
+      chunks.forEach((chunk,ci)=>{
+        const isLast=ci===chunks.length-1;
+        const cells=chunk.map(ph=>`<td style="padding:6px;width:50%"><div style="width:100%;height:210px;border:1px solid #999;background-image:url('${ph}');background-size:cover;background-position:center"></div></td>`);
+        let rows='';for(let i=0;i<cells.length;i+=2) rows+=`<tr>${cells.slice(i,i+2).join('')}</tr>`;
+        fotoPagesOC+=`<div class="${isLast?'page-last':'page'}">
+          <div style="text-align:center;margin-bottom:16px">
+            <div style="font-size:13px;font-weight:700;text-transform:uppercase">ANEXO INVENTARIO CBRD N° ${cbrd}</div>
+            <div style="font-size:11px;font-weight:400;margin-top:4px">Registro gráfico de las obras civiles y equipos inventariados</div>
+          </div>
+          <table style="width:100%;border-collapse:collapse">${rows}</table>
+          ${isLast?sigBlock:''}
+        </div>`;
+      });
+    }
+    const sigPag1OC=photos.length===0?sigBlock:'';
+
     return docOpen+`
       <div class="${pg1cls}">
-        ${hdr('ACTA DE INVENTARIO DE EQUIPOS Y ELEMENTOS DE RIEGO',`CONCURSO ${concurso} , REGIÓN DE ÑUBLE , LEY 18.450`)}
-        <div class="sec sec-id">1.- IDENTIFICACIÓN:</div>
-        ${idT()}
-        <div class="sec sec-inv">${secInv}</div>
-        ${invTable}
-        ${obsBlock}
-        ${sigPag1}
+        ${hdrOC}
+        <div class="sec sec-id">1.- ANTECEDENTES</div>
+        ${idOC}
+        ${invOC}
+        ${obsOC}
+        ${sigPag1OC}
       </div>
-      ${fotoPages}
+      ${fotoPagesOC}
     `+docClose;
   }
 
