@@ -945,7 +945,7 @@ function edt(k,rec){return `<input type="date" data-f="${k}" value="${rec[k]||td
 function esel(k,rec,opts){return `<select data-f="${k}">${opts.map(o=>`<option value="${o}" ${(rec[k]||opts[0])===o?'selected':''}>${o}</option>`).join('')}</select>`;}
 
 /* ── IDENT SECTION ─────────────────────────────── */
-function bArchivos(p){
+function bArchivos(p,isT){
   const cod=p['Código Proyecto'];
   const slots=['Presupuesto','Plano','Cubicaciones','Otro Antecedente'];
   return slots.map(sl=>{
@@ -1209,7 +1209,7 @@ function bInicio(p,isT,rec,rk){
     <div class="frow"><span class="fl">Fecha inicio de obras</span><span class="fc">:</span><span class="fi" style="max-width:200px">${edt('_f_ini',rec)}</span></div>
     
     <div class="slabel" style="margin-top:12px">ANTECEDENTES Y DOCUMENTOS:</div>
-    <div class="arch-container" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:8px;margin:8px 0">${bArchivos(p)}</div>
+    <div class="arch-container" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:8px;margin:8px 0">${bArchivos(p,isT)}</div>
     
     <div class="slabel" style="margin-top:12px">VERIFICACIONES INICIALES:</div>
     <div class="verif-item" style="margin-bottom:12px">
