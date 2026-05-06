@@ -945,17 +945,7 @@ function edt(k,rec){return `<input type="date" data-f="${k}" value="${rec[k]||td
 function esel(k,rec,opts){return `<select data-f="${k}">${opts.map(o=>`<option value="${o}" ${(rec[k]||opts[0])===o?'selected':''}>${o}</option>`).join('')}</select>`;}
 
 /* ── IDENT SECTION ─────────────────────────────── */
-function bArchivos(p,isT){
-  const cod=p['Código Proyecto'];
-  const slots=['Presupuesto','Plano','Cubicaciones','Otro Antecedente'];
-  return slots.map(sl=>{
-    const fk=`f_${cod}_${sl.replace(/ /g,'_')}`;
-    const fi=S.files[fk];
-    return `<div class="arch-slot" onclick="upFile('${fk}','${sl}',this)"><span class="arch-lbl">${sl}</span><div class="arch-box ${fi?'has':''}">${fi?'📎':''}</div></div>`;
-  }).join('');
-}
-
-
+function bIdent(p,isT,rec){
   const norte=p['Norte']||'',este=p['Este']||'',huso=p['Huso']||'';
   const lat=p['LatitudConvertida'],lng=p['LongitudConvertida'];
   // map buttons removed - single Maps thumbnail used
@@ -976,6 +966,14 @@ function bArchivos(p,isT){
       <img src="${MAPS_URI}" style="width:100%;height:100%;object-fit:cover;border-radius:6px" alt="Maps">
     </div>
   </div>`;
+
+  const cod=p['Código Proyecto'];
+  const slots=isT?['Presupuesto','Plano','Detalle Fotovoltaico','Otro Antecedente']:['Presupuesto','Plano','Cubicaciones','Otro Antecedente'];
+  const archSlots=slots.map(sl=>{
+    const fk=`f_${cod}_${sl.replace(/ /g,'_')}`;
+    const fi=S.files[fk];
+    return `<div class="arch-slot" onclick="upFile('${fk}','${sl}',this)"><span class="arch-lbl">${sl}</span><div class="arch-box ${fi?'has':''}">${fi?'📎':''}</div></div>`;
+  }).join('');
 
   const civil=!isT?`
     <div class="frow"><span class="fl">Localidad</span><span class="fc">:</span><span class="fi">${ei('_localidad','Llenar en terreno',rec)}</span></div>
@@ -1000,7 +998,8 @@ function bArchivos(p,isT){
     </div>
     <div class="frow"><span class="fl">Provincia</span><span class="fc">:</span><span class="fi" style="max-width:200px">${pi('Provincia',p)}</span></div>
     ${civil}
-    <div class="frow"><span class="fl">Fecha</span><span class="fc">:</span><span class="fi" style="max-width:200px">${edt('_fecha',rec)}</span></div>`;
+    <div class="frow"><span class="fl">Fecha</span><span class="fc">:</span><span class="fi" style="max-width:200px">${edt('_fecha',rec)}</span></div>
+    <div class="arch-row" style="justify-content:center">${archSlots}</div>`;
 }
 
 /* ── INVENTARIO ─────────────────────────────────── */
@@ -1208,28 +1207,25 @@ function bInicio(p,isT,rec,rk){
     +`<div class="slabel" style="margin-top:6px">DATOS DE INICIO DE OBRAS:</div>
     <div class="frow"><span class="fl">Fecha inicio de obras</span><span class="fc">:</span><span class="fi" style="max-width:200px">${edt('_f_ini',rec)}</span></div>
     
-    <div class="slabel" style="margin-top:12px">ANTECEDENTES Y DOCUMENTOS:</div>
-    <div class="arch-container" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:8px;margin:8px 0">${bArchivos(p,isT)}</div>
-    
     <div class="slabel" style="margin-top:12px">VERIFICACIONES INICIALES:</div>
-    <div class="verif-item" style="margin-bottom:12px">
-      <div style="font-size:13px;font-weight:500;color:#1a2a3a;margin-bottom:4px">a) Verificación de Obra Nueva: Se confirma que los trabajos contemplados en el proyecto aún no se han ejecutado, asegurando que se trata efectivamente de una obra nueva</div>
-      <div style="display:flex;gap:8px">${esel('_verif_nueva',rec,['— Seleccione —','Sí','No'])}</div>
+    <div style="margin-bottom:12px">
+      <div style="font-size:13px;font-weight:500;color:#1a2a3a;margin-bottom:6px">a) Verificación de Obra Nueva: Se confirma que los trabajos contemplados en el proyecto aún no se han ejecutado, asegurando que se trata efectivamente de una obra nueva</div>
+      <div style="max-width:200px">${esel('_verif_nueva',rec,['— Seleccione —','Sí','No'])}</div>
     </div>
     
-    <div class="verif-item" style="margin-bottom:12px">
-      <div style="font-size:13px;font-weight:500;color:#1a2a3a;margin-bottom:4px">b) Validación de Documentación en Terreno: Exigir que el beneficiario tenga a disposición el Libro de Obras y el plano impreso del proyecto en el sitio</div>
-      <div style="display:flex;gap:8px">${esel('_verif_docs',rec,['— Seleccione —','Sí','No'])}</div>
+    <div style="margin-bottom:12px">
+      <div style="font-size:13px;font-weight:500;color:#1a2a3a;margin-bottom:6px">b) Validación de Documentación en Terreno: Exigir que el beneficiario tenga a disposición el Libro de Obras y el plano impreso del proyecto en el sitio</div>
+      <div style="max-width:200px">${esel('_verif_docs',rec,['— Seleccione —','Sí','No'])}</div>
     </div>
     
-    <div class="verif-item" style="margin-bottom:12px">
-      <div style="font-size:13px;font-weight:500;color:#1a2a3a;margin-bottom:4px">c) Aprobación del Beneficiario: Verificar fehacientemente que el beneficiario conoce y aprueba el proyecto técnico que se va a construir</div>
-      <div style="display:flex;gap:8px">${esel('_verif_aprob',rec,['— Seleccione —','Sí','No'])}</div>
+    <div style="margin-bottom:12px">
+      <div style="font-size:13px;font-weight:500;color:#1a2a3a;margin-bottom:6px">c) Aprobación del Beneficiario: Verificar fehacientemente que el beneficiario conoce y aprueba el proyecto técnico que se va a construir</div>
+      <div style="max-width:200px">${esel('_verif_aprob',rec,['— Seleccione —','Sí','No'])}</div>
     </div>
     
-    <div class="verif-item" style="margin-bottom:12px">
-      <div style="font-size:13px;font-weight:500;color:#1a2a3a;margin-bottom:4px">d) Instrucciones Técnicas: Realizar todas las aclaraciones y precisiones necesarias para asegurar que la construcción se ajuste al proyecto aprobado</div>
-      <div style="display:flex;gap:8px">${esel('_verif_instr',rec,['— Seleccione —','Sí','No'])}</div>
+    <div style="margin-bottom:12px">
+      <div style="font-size:13px;font-weight:500;color:#1a2a3a;margin-bottom:6px">d) Instrucciones Técnicas: Realizar todas las aclaraciones y precisiones necesarias para asegurar que la construcción se ajuste al proyecto aprobado</div>
+      <div style="max-width:200px">${esel('_verif_instr',rec,['— Seleccione —','Sí','No'])}</div>
     </div>
     
     <div class="obs-box" style="margin-top:12px">
