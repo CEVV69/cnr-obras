@@ -1516,9 +1516,9 @@ function buildPDFHTML(p,m,rec,isT,items,photos,sig){
     // ── OBRAS CIVILES — formato oficial ────────────────────────────
     const cbrd=x(p['CBRD']||'');
 
-    // Cabecera OC: logo izq, título centro en 2 líneas, CBRD+FECHA a la derecha con subrayado
+    // Cabecera OC: logo izq + título centrado (sin CBRD/FECHA aquí)
     const hdrOC=`
-      <div style="display:table;width:100%;margin-bottom:14px">
+      <div style="display:table;width:100%;margin-bottom:6px;margin-top:-5mm">
         <div style="display:table-cell;width:72px;vertical-align:middle">
           <img src="${logoSrc}" alt="CNR" style="width:64px;height:64px;object-fit:contain">
         </div>
@@ -1526,12 +1526,13 @@ function buildPDFHTML(p,m,rec,isT,items,photos,sig){
           <div style="font-size:13.5px;font-weight:700;text-transform:uppercase;line-height:1.4">INVENTARIO DE PROYECTOS DE OBRAS</div>
           <div style="font-size:13.5px;font-weight:700;text-transform:uppercase;line-height:1.4">CIVILES BONIFICADOS LEY 18.450</div>
         </div>
-        <div style="display:table-cell;width:110px;vertical-align:middle;text-align:right;font-size:10.5px">
-          <div style="margin-bottom:2px">CBRD N°&nbsp;&nbsp;<strong style="font-size:12.5px">${cbrd}</strong></div>
-          <div style="border-bottom:1px solid #111;margin-bottom:6px"></div>
-          <div>FECHA:&nbsp;&nbsp;${x(rec['_fecha']||'')}</div>
-          <div style="border-bottom:1px solid #111"></div>
-        </div>
+        <div style="display:table-cell;width:72px"></div>
+      </div>
+      <div style="text-align:right;font-size:10.5px;margin-bottom:14px">
+        <div style="margin-bottom:2px">CBRD N°&nbsp;&nbsp;<strong style="font-size:12.5px">${cbrd}</strong></div>
+        <div style="border-bottom:1px solid #111;width:110px;margin-left:auto;margin-bottom:6px"></div>
+        <div>FECHA:&nbsp;&nbsp;${x(rec['_fecha']||'')}</div>
+        <div style="border-bottom:1px solid #111;width:110px;margin-left:auto"></div>
       </div>`;
 
     // Tabla antecedentes OC — con bordes, estructura exacta del PDF oficial
@@ -1587,7 +1588,7 @@ function buildPDFHTML(p,m,rec,isT,items,photos,sig){
 
     // Inventario OC — columnas exactas del PDF oficial: N° | Cant. | Tipo de obra | Dimensiones | Coordenadas | Obs.técnicas
     const invOC=`
-      <div class="sec sec-inv">2.- INVENTARIO (registrar coordenadas en los casos que corresponda)</div>
+      <div class="sec" style="margin:24px 0 6px;text-transform:uppercase;font-weight:700;font-size:11.5px">2.- INVENTARIO (registrar coordenadas en los casos que corresponda)</div>
       <table class="inv" style="table-layout:fixed;width:100%">
         <colgroup>
           <col style="width:24px"><col style="width:36px"><col style="width:18%">
@@ -1606,7 +1607,7 @@ function buildPDFHTML(p,m,rec,isT,items,photos,sig){
 
     // Observaciones — solo si hay contenido, sin bordes, etiqueta en negrita
     const obsOC=rec['_obs']?`
-      <div style="margin-top:14px;font-size:10.5px">
+      <div style="margin-top:22px;font-size:10.5px">
         <div style="font-weight:700;margin-bottom:4px">Observaciones:</div>
         <div>${x(rec['_obs'])}</div>
       </div>`:'';
