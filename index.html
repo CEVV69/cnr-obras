@@ -40,7 +40,6 @@ if ('serviceWorker' in navigator) {
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script>
 if(typeof pdfjsLib!=='undefined'){
   pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -108,14 +107,14 @@ body{background:#b8bec8}
   flex-shrink:0;display:flex;align-items:center;
   padding:6px 10px;gap:8px;min-height:66px;
 }
-#hdr .pwr{width:36px;height:36px;border-radius:5px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px;cursor:pointer;flex-shrink:0;line-height:1;padding:0;margin:0}
+#hdr .pwr{width:36px;height:36px;border-radius:5px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px;cursor:pointer;flex-shrink:0;padding:0;margin:0;line-height:1}
 #hdr .logo{width:50px;height:50px;border-radius:50%;overflow:hidden;display:flex;flex-shrink:0;background:#fff}
 #hdr .logo img{width:100%;height:100%;object-fit:cover}
 #hdr .htitle{flex:1;color:#fff;text-align:center;line-height:1.25;padding:0 4px}
 #hdr .htitle .t1{font-size:13px;font-weight:700;letter-spacing:.1px}
 #hdr .htitle .t2{font-size:11px;opacity:.85;margin-top:1px}
 #hdr .hicons{display:flex;gap:4px;flex-shrink:0}
-.hico{width:36px;height:36px;background:linear-gradient(145deg,#6a7a9a,#3d4f72);border:1px solid rgba(255,255,255,.25);border-radius:5px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;color:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3);line-height:1;padding:0;margin:0}
+.hico{width:36px;height:36px;background:linear-gradient(145deg,#6a7a9a,#3d4f72);border:1px solid rgba(255,255,255,.25);border-radius:5px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;color:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3);padding:0;margin:0;line-height:1}
 .hico:active{opacity:.75}
 
 /* =====================================================
@@ -498,21 +497,22 @@ body{background:#b8bec8}
 
       <!-- SYNC BUTTONS -->
       <div class="sync-row">
-        <button class="sync-btn export" onclick="exportProject()">
-          <span class="sb-icon">💾</span>
+        <button class="sync-btn export" onclick="exportJSON()">
+          <span class="sb-icon">📤</span>
           <span class="sb-text">
-            <div class="sb-title">Exportar proyecto</div>
-            <div class="sb-sub">Guardar proyecto actual</div>
+            <div class="sb-title">Exportar datos</div>
+            <div class="sb-sub">Guardar todo para llevar al tablet</div>
           </span>
         </button>
-        <button class="sync-btn import" onclick="importProject()">
-          <span class="sb-icon">📂</span>
+        <button class="sync-btn import" onclick="document.getElementById('json-inp').click()">
+          <span class="sb-icon">📥</span>
           <span class="sb-text">
-            <div class="sb-title">Importar proyecto</div>
-            <div class="sb-sub">Cargar proyecto desde archivo</div>
+            <div class="sb-title">Importar datos</div>
+            <div class="sb-sub">Cargar datos desde otro dispositivo</div>
           </span>
         </button>
       </div>
+      <input type="file" id="json-inp" accept=".json" style="display:none" onchange="importJSON(event)">
       <div id="storage-info" style="font-size:11px;color:#667;text-align:center;width:100%;max-width:420px">
         Cargando información de almacenamiento...
       </div>
@@ -734,16 +734,14 @@ function showPortada(){
   if(el2)el2.style.display='none';
   if(el3)el3.style.display='none';
   
-  // Hide all form buttons, show only config
-  const btnHome=document.getElementById('btn-home-form');
-  if(btnHome)btnHome.style.display='none';
+  // Hide all buttons except config in home
+  document.getElementById('btn-config-header').style.display='block';
   document.getElementById('btn-export-proj').style.display='none';
   document.getElementById('btn-import-proj').style.display='none';
   document.getElementById('btn-info').style.display='none';
   document.getElementById('btn-email').style.display='none';
   document.getElementById('btn-preview').style.display='none';
   document.getElementById('btn-print').style.display='none';
-  document.getElementById('btn-config-header').style.display='block';
 }
 
 function goPortada(){
@@ -863,7 +861,8 @@ function renderCurrent(){
   document.getElementById('mod-label').textContent=ML[S.mod];
   document.getElementById('sep-sel').value=rec['_sep']||'No';
   
-  // Header buttons: hide config, show export/import/info/email/preview/print in form screens
+  // Header buttons: hide config, show export/import in form screens
+  // Header buttons in form screens
   const btnCfg=document.getElementById('btn-config-header');
   const btnExp=document.getElementById('btn-export-proj');
   const btnImp=document.getElementById('btn-import-proj');
@@ -871,22 +870,6 @@ function renderCurrent(){
   const btnEmail=document.getElementById('btn-email');
   const btnPreview=document.getElementById('btn-preview');
   const btnPrint=document.getElementById('btn-print');
-  
-  // Crear botón home si no existe
-  let btnHome=document.getElementById('btn-home-form');
-  if(!btnHome){
-    btnHome=document.createElement('div');
-    btnHome.id='btn-home-form';
-    btnHome.className='pwr';
-    btnHome.onclick=()=>goPortada();
-    btnHome.title='Volver al inicio';
-    btnHome.style.fontSize='16px';
-    btnHome.textContent='🏠';
-    document.getElementById('hdr').insertBefore(btnHome, document.getElementById('hdr').firstChild);
-  }
-  
-  // Show/hide buttons
-  if(btnHome)btnHome.style.display='block';
   if(btnCfg)btnCfg.style.display='none';
   if(btnExp)btnExp.style.display='block';
   if(btnImp)btnImp.style.display='block';
@@ -1349,7 +1332,7 @@ function save(){
 /* ── PDF — fiel al acta FileMaker ────────────────── */
 function buildPDFHTML(p,m,rec,isT,items,photos,sig){
   const cols=isT?3:2;
-  const PHW=isT?180:260;
+  const PHW=isT?180:260; // px width per photo in PDF
   const PHH=isT?135:195;
 
   // Inventory table
@@ -1362,22 +1345,38 @@ function buildPDFHTML(p,m,rec,isT,items,photos,sig){
     }
   }
 
-  // Signature block
+  // Photos — FIXED uniform size
+  let photoGrid='';
+  if(photos.length){
+    const phCells=photos.map((ph,i)=>
+      `<td style="padding:4px;text-align:center;vertical-align:top">
+        <img src="${ph}" style="width:${PHW}px;height:${PHH}px;object-fit:cover;border:1px solid #ccc;display:block">
+        <div style="font-size:9px;color:#666;margin-top:2px">Foto ${i+1}</div>
+      </td>`
+    );
+    // chunk into rows of `cols`
+    let rows='';
+    for(let i=0;i<phCells.length;i+=cols){
+      rows+=`<tr>${phCells.slice(i,i+cols).join('')}</tr>`;
+    }
+    photoGrid=`<h3 style="margin:16px 0 8px;font-size:12px;color:#2e3d5c;border-bottom:1.5px solid #2e3d5c;padding-bottom:3px">REGISTRO FOTOGRÁFICO</h3>
+      <table style="border-collapse:collapse">${rows}</table>`;
+  }
+
   const sigBlock=sig
-    ?`<div style="margin-top:32px;text-align:center;page-break-inside:avoid">
+    ?`<div style="margin-top:24px;text-align:center">
         <img src="${sig}" style="height:80px;border-bottom:1px solid #1a2a3a;display:block;margin:0 auto">
-        <p style="font-size:11px;margin:8px 0 2px;font-weight:600">${x(rec['_sup']||SUPS[0])}</p>
-        <p style="font-size:10px;color:#555;margin:0">Unidad de Supervisión y Seguimiento de Obras Construidas<br>CNR Ñuble</p>
+        <p style="font-size:11px;margin-top:6px;font-weight:600">${x(rec['_sup']||SUPS[0])}</p>
+        <p style="font-size:10px;color:#555">Unidad de Supervisión y Seguimiento de Obras Construidas<br>CNR Ñuble</p>
       </div>` : '';
 
   const modTitles={inicio:'INICIO DE OBRAS',visita:'VISITA DE SUPERVISIÓN INTERMEDIA',recepcion:'RECEPCIÓN DE OBRAS'};
 
-  // PAGE 1
-  let page1=`<!DOCTYPE html><html><head><meta charset="UTF-8">
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8">
   <title>Acta ${ML[m]} – ${p['Código Proyecto']}</title>
   <style>
     body{font-family:'Helvetica Neue',Arial,sans-serif;font-size:12px;color:#1a2a3a;margin:0;padding:0}
-    .page{padding:20px 24px;max-width:210mm;margin:0 auto;page-break-after:always}
+    .page{padding:20px 24px;max-width:210mm;margin:0 auto}
     h2{font-size:13px;text-align:center;color:#2e3d5c;margin:0 0 2px;font-weight:700;text-transform:uppercase}
     h3{font-size:11px;text-align:center;color:#444;margin:0 0 16px;font-weight:400}
     .sec-title{font-size:12px;font-weight:700;color:#1a2a3a;margin:14px 0 6px;text-transform:uppercase}
@@ -1461,31 +1460,11 @@ function buildPDFHTML(p,m,rec,isT,items,photos,sig){
     <div class="obs-item"><div class="ol">Pendientes a la recepción</div><div class="ov">${rec['_pend']||''}</div></div>
   </div>`:''}
 
+  ${photoGrid}
   ${sigBlock}
   </div>
-  `;
 
-  // PAGE 2: Fotos
-  let page2='';
-  if(photos.length){
-    const phCells=photos.map((ph,i)=>
-      `<td style="padding:6px;text-align:center;vertical-align:top">
-        <img src="${ph}" style="width:${PHW}px;height:${PHH}px;object-fit:cover;border:1px solid #ccc;display:block">
-        <div style="font-size:9px;color:#666;margin-top:3px">Foto ${i+1}</div>
-      </td>`
-    );
-    let rows='';
-    for(let i=0;i<phCells.length;i+=cols){
-      rows+=`<tr>${phCells.slice(i,i+cols).join('')}</tr>`;
-    }
-    page2=`
-  <div class="page">
-    <h2>REGISTRO FOTOGRÁFICO</h2>
-    <table style="border-collapse:collapse;width:100%;margin-top:12px">${rows}</table>
-  </div>`;
-  }
-
-  return page1+page2+`</body></html>`;
+</body></html>`;
 }
 
 function getPDFData(){
@@ -1503,44 +1482,38 @@ function doPDF(print){
   save();
   const d=getPDFData();if(!d){toast('Abra un proyecto');return;}
   const html=buildPDFHTML(d.p,d.m,d.rec,d.isT,d.items,d.photos,d.sig);
-  const opt={margin:10,filename:`Acta_${d.cod}_${ML[d.m].replace(/ /g,'_')}.pdf`,image:{type:'jpeg',quality:0.98},html2canvas:{scale:2},jsPDF:{orientation:'portrait',unit:'mm',format:'a4'}};
-  if(print){
-    html2pdf().set(opt).from(html).output('datauristring').then(pdf=>{
-      const w=window.open(pdf);
-      setTimeout(()=>w.print(),800);
-    });
-  } else {
-    html2pdf().set(opt).from(html).save();
-  }
+  const w=window.open('','_blank');
+  w.document.write(html);w.document.close();
+  if(print)setTimeout(()=>w.print(),500);
 }
 
-/* ── EMAIL: genera PDF y abre correo ─── */
+/* ── EMAIL: descarga HTML como archivo + abre cliente correo ─── */
 function doEmail(){
   save();
   const d=getPDFData();if(!d){toast('Abra un proyecto');return;}
   const htmlContent=buildPDFHTML(d.p,d.m,d.rec,d.isT,d.items,d.photos,d.sig);
-  const fname=`Acta_${d.cod}_${ML[d.m].replace(/ /g,'_')}.pdf`;
-  const opt={margin:10,filename:fname,image:{type:'jpeg',quality:0.98},html2canvas:{scale:2},jsPDF:{orientation:'portrait',unit:'mm',format:'a4'}};
-  html2pdf().set(opt).from(htmlContent).output('blob').then(pdf=>{
-    const url=URL.createObjectURL(pdf);
-    const a=document.createElement('a');
-    a.href=url;a.download=fname;document.body.appendChild(a);a.click();document.body.removeChild(a);
-    setTimeout(()=>URL.revokeObjectURL(url),2000);
-    setTimeout(()=>{
-      const subj=encodeURIComponent(`CNR Ñuble – ${ML[d.m]} – ${d.cod}`);
-      const body=encodeURIComponent(
-        `Estimado(a),\n\nAdjunto acta de ${ML[d.m]} del proyecto:\n\n`+
-        `Código: ${d.cod}\nProyecto: ${d.p['Nombre proyecto']}\n`+
-        `Beneficiario: ${d.p['Nombre']}\nFecha: ${d.rec['_fecha']||''}\n\n`+
-        `El archivo PDF fue descargado en su dispositivo (${fname}).\n`+
-        `Adjúntelo a este correo antes de enviarlo.\n\n`+
-        `Saludos,\n${d.rec['_sup']||SUPS[0]}\n`+
-        `Unidad de Supervisión y Seguimiento de Obras Construidas\nCNR Ñuble`
-      );
-      window.open(`mailto:?subject=${subj}&body=${body}`);
-    },800);
-    toast('📥 PDF generado. Adjúntelo al correo.',4000);
-  }).catch(err=>{console.error(err);toast('⚠️ Error al generar PDF');});
+  // 1. Download the acta as an HTML file (opens in browser, printable as PDF)
+  const blob=new Blob([htmlContent],{type:'text/html;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  const fname=`Acta_${d.cod}_${ML[d.m].replace(/ /g,'_')}.html`;
+  a.href=url;a.download=fname;document.body.appendChild(a);a.click();
+  document.body.removeChild(a);setTimeout(()=>URL.revokeObjectURL(url),2000);
+  // 2. Open mail client
+  setTimeout(()=>{
+    const subj=encodeURIComponent(`CNR Ñuble – ${ML[d.m]} – ${d.cod}`);
+    const body=encodeURIComponent(
+      `Estimado(a),\n\nAdjunto acta de ${ML[d.m]} del proyecto:\n\n`+
+      `Código: ${d.cod}\nProyecto: ${d.p['Nombre proyecto']}\n`+
+      `Beneficiario: ${d.p['Nombre']}\nFecha: ${d.rec['_fecha']||''}\n\n`+
+      `El archivo del acta fue descargado en su dispositivo (${fname}).\n`+
+      `Adjúntelo a este correo antes de enviarlo.\n\n`+
+      `Saludos,\n${d.rec['_sup']||SUPS[0]}\n`+
+      `Unidad de Supervisión y Seguimiento de Obras Construidas\nCNR Ñuble`
+    );
+    window.open(`mailto:?subject=${subj}&body=${body}`);
+  },600);
+  toast('📥 Acta descargada. Adjúntela al correo.',4000);
 }
 
 
@@ -1823,50 +1796,23 @@ function importProject(){
     fr.onload=ev=>{
       try{
         const data=JSON.parse(ev.target.result);
-        if(!data.allProjects||!data.allProjects.length){
-          toast('⚠️ Archivo inválido');
-          return;
-        }
-        
-        // Detectar conflictos: ¿ya están los proyectos importados en S.openCodes?
-        const codesToImport=data.openCodes||data.allProjects.map(p=>p['Código Proyecto']);
-        const conflicts=codesToImport.filter(cod=>S.openCodes.includes(cod));
-        
-        // Si hay conflictos, preguntar qué hacer
-        let replace=true;
-        if(conflicts.length>0){
-          replace=confirm(`${conflicts.length} proyecto(s) ya importados:\n${conflicts.join(', ')}\n\n¿Reemplazarlos?`);
-        }
-        
-        // Importar
+        if(!data.allProjects||!data.allProjects.length){toast('⚠️ Archivo inválido');return;}
         let imported=0;
         for(const proj of data.allProjects){
           const cod=proj['Código Proyecto'];
-          const idx=S.openCodes.indexOf(cod);
-          if(idx>=0){
-            // Ya importado
-            if(replace) imported++;
-          } else {
-            // Nuevo
-            S.openCodes.push(cod);
-            imported++;
-          }
+          const exists=S.allProjects.find(p=>p['Código Proyecto']===cod);
+          if(exists){if(confirm(`Proyecto ${cod} ya existe.\n¿Reemplazarlo?`)){const idx=S.allProjects.findIndex(p=>p['Código Proyecto']===cod);S.allProjects[idx]=proj;imported++;}}
+          else{S.allProjects.push(proj);imported++;}
         }
-        
-        // Fusionar datos
         Object.assign(S.rec,data.rec||{});
         Object.assign(S.inv,data.inv||{});
         Object.assign(S.ph,data.ph||{});
         Object.assign(S.files,data.files||{});
         Object.assign(S.sigs,data.sigs||{});
-        
         persist();
         toast(`✅ ${imported} proyecto(s) importado(s)`,3000);
-        showPortada();
-      }catch(err){
-        console.error('Import error:',err);
-        toast('⚠️ Error al importar');
-      }
+        renderCurrent();
+      }catch(err){console.error('Import error:',err);toast('⚠️ Error al importar');}
     };
     fr.readAsText(file);
   };
