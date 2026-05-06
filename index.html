@@ -687,6 +687,22 @@ function loadFromDB(){
           const old=localStorage.getItem(SK);
           if(old){S={...S,...JSON.parse(old)};persist();localStorage.removeItem(SK);}
         }
+        
+        // Migrate old file keys: f_cod_MOD_slot → f_cod_slot
+        const newFiles={};
+        for(const [k,v] of Object.entries(S.files||{})){
+          if(k.match(/^f_[^_]+_(inicio|visita|recepcion)_/)){
+            // Old format: extract cod and slot
+            const parts=k.split('_');
+            const cod=parts[1]; // e.g., "203-2021-16-010"
+            const slot=parts.slice(3).join('_'); // e.g., "Presupuesto"
+            const newK=`f_${cod}_${slot}`;
+            if(!newFiles[newK]) newFiles[newK]=v; // Keep first occurrence
+          } else {
+            newFiles[k]=v; // New format or other keys
+          }
+        }
+        S.files=newFiles;
       }catch(ex){}
       res();
     };
