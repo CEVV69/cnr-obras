@@ -955,7 +955,7 @@ function bIdent(p,isT,rec){
   const cod=p['Código Proyecto'];
   const slots=isT?['Presupuesto','Plano','Detalle Fotovoltaico','Otro Antecedente']:['Presupuesto','Plano','Cubicaciones','Otro Antecedente'];
   const archSlots=slots.map(sl=>{
-    const fk=`f_${cod}_${S.mod}_${sl.replace(/ /g,'_')}`;
+    const fk=`f_${cod}_${sl.replace(/ /g,'_')}`;
     const fi=S.files[fk];
     return `<div class="arch-slot" onclick="upFile('${fk}','${sl}',this)"><span class="arch-lbl">${sl}</span><div class="arch-box ${fi?'has':''}">${fi?'📎':''}</div></div>`;
   }).join('');
@@ -1215,6 +1215,7 @@ function bVisita(p,isT,rec,rk){
       <div class="obs-fld"><div class="obs-lbl">Acuerdos y compromisos</div><textarea data-f="_acuerd" rows="3">${x(rec['_acuerd']||'')}</textarea></div>
     </div>
     <div class="frow"><span class="fl">Próxima visita</span><span class="fc">:</span><span class="fi" style="max-width:155px">${edt('_prox',rec)}</span></div>`
+    +(isT?bInvT(p,'visita'):bInvC(p,'visita'))
     +bFotos(p,isT,'visita')+bFirma(rec,rk);
 }
 
