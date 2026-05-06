@@ -1358,7 +1358,7 @@ function buildPDFHTML(p,m,rec,isT,items,photos,sig){
   // ── ESTILOS ──────────────────────────────────────────────────────
   const css=`
     *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:'Calibri','Carlito','Trebuchet MS',Arial,sans-serif;font-size:11.5px;color:#111;background:#fff}
+    body{font-family:Arial,Helvetica,sans-serif;font-size:11.5px;color:#111;background:#fff}
     .page{width:216mm;min-height:279mm;padding:16mm 18mm 16mm 18mm;page-break-after:always;position:relative}
     .page-last{width:216mm;min-height:279mm;padding:16mm 18mm 16mm 18mm;position:relative}
     /* Cabecera */
@@ -1392,17 +1392,16 @@ function buildPDFHTML(p,m,rec,isT,items,photos,sig){
     .ob-r:last-child{border-bottom:none}
     .ob-l{font-size:9.5px;font-weight:700;text-transform:uppercase;color:#555;margin-bottom:2px}
     .ob-v{font-size:11px;min-height:14px}
-    /* Firma — separación generosa respecto a fotos */
-    .sig{margin-top:52px;text-align:center;page-break-inside:avoid}
+    /* Firma — separación amplia de fotos */
+    .sig{margin-top:80px;text-align:center;page-break-inside:avoid}
     .sig img{height:68px;display:block;margin:0 auto}
     .sig-ln{border-top:1px solid #111;width:220px;margin:4px auto 0}
     .sig-nm{font-size:11px;font-weight:700;margin-top:6px}
     .sig-cg{font-size:10px;color:#444;margin-top:3px;line-height:1.5}
-    /* Fotos — recorte apaisado fijo, sin deformación */
+    /* Fotos — recorte via background-image, sin deformación */
     .fg{width:100%;border-collapse:collapse;margin-top:12px}
     .fg td{padding:4px;vertical-align:top;width:33.33%}
-    .fg-img{width:100%;height:120px;overflow:hidden;border:1px solid #ccc;position:relative}
-    .fg-img img{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:100%;height:100%;object-fit:cover;object-position:center}
+    .fg-img{width:100%;height:120px;border:1px solid #ccc;background-size:cover;background-position:center center;background-repeat:no-repeat}
     @page{size:letter;margin:0}
     @media print{.page,.page-last{page-break-after:always}}
   `;
@@ -1462,7 +1461,7 @@ function buildPDFHTML(p,m,rec,isT,items,photos,sig){
     for(let i=0;i<photos.length;i+=fotosPerPage) chunks.push(photos.slice(i,i+fotosPerPage));
     chunks.forEach((chunk,ci)=>{
       const isLastPage=ci===chunks.length-1;
-    const cells=chunk.map(ph=>`<td><div class="fg-img"><img src="${ph}" alt=""></div></td>`);
+    const cells=chunk.map(ph=>`<td><div class="fg-img" style="background-image:url('${ph}')"></div></td>`);
       let rows='';for(let i=0;i<cells.length;i+=3) rows+=`<tr>${cells.slice(i,i+3).join('')}</tr>`;
       const cls=isLastPage?'page-last':'page';
       fotoPages+=`<div class="${cls}">
