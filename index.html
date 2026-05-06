@@ -1358,7 +1358,7 @@ function buildPDFHTML(p,m,rec,isT,items,photos,sig){
   // ── ESTILOS ──────────────────────────────────────────────────────
   const css=`
     *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:'Helvetica Neue',Arial,sans-serif;font-size:11px;color:#111;background:#fff}
+    body{font-family:'Calibri','Carlito','Trebuchet MS',Arial,sans-serif;font-size:11.5px;color:#111;background:#fff}
     .page{width:216mm;min-height:279mm;padding:16mm 18mm 16mm 18mm;page-break-after:always;position:relative}
     .page-last{width:216mm;min-height:279mm;padding:16mm 18mm 16mm 18mm;position:relative}
     /* Cabecera */
@@ -1366,40 +1366,43 @@ function buildPDFHTML(p,m,rec,isT,items,photos,sig){
     .hdr-logo{display:table-cell;width:70px;vertical-align:middle}
     .hdr-logo img{width:60px;height:60px;object-fit:contain}
     .hdr-txt{display:table-cell;vertical-align:middle;text-align:center;padding:0 8px}
-    .hdr-txt h1{font-size:12.5px;font-weight:800;text-transform:uppercase;letter-spacing:.2px;line-height:1.4}
-    .hdr-txt h2{font-size:11.5px;font-weight:700;text-transform:uppercase;margin-top:1px;line-height:1.3}
+    .hdr-txt h1{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.2px;line-height:1.4}
+    .hdr-txt h2{font-size:11.5px;font-weight:600;text-transform:uppercase;margin-top:2px;line-height:1.3}
     .hdr-spc{display:table-cell;width:70px}
     /* Título sección */
-    .sec{font-size:11px;font-weight:800;text-transform:uppercase;margin:12px 0 5px;letter-spacing:.1px}
-    /* Tabla identificación — sin líneas bajo valores */
+    .sec{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.1px}
+    .sec-id{margin:10px 0 6px}
+    .sec-inv{margin:20px 0 6px}
+    /* Tabla identificación */
     .id-t{width:100%;border-collapse:collapse}
-    .id-t td{padding:2.5px 4px;font-size:10.5px;vertical-align:top;border:none}
-    .id-t .lb{font-weight:700;width:130px;white-space:nowrap}
+    .id-t td{padding:3px 4px;font-size:11px;vertical-align:top;border:none;line-height:1.4}
+    .id-t .lb{font-weight:700;width:135px;white-space:nowrap}
     .id-t .sp{width:10px;text-align:left}
     .id-t .vl{padding-left:2px}
     /* Tabla inventario */
-    .inv{border-collapse:collapse;width:100%;font-size:10px;margin-top:4px}
-    .inv th{border:1px solid #111;padding:4px 5px;text-align:left;font-weight:700;background:#fff;font-size:10px}
-    .inv td{border:1px solid #555;padding:3.5px 5px;vertical-align:top}
+    .inv{border-collapse:collapse;width:100%;font-size:10.5px;margin-top:4px}
+    .inv th{border:1px solid #111;padding:5px 6px;text-align:left;font-weight:700;background:#fff;font-size:10.5px}
+    .inv td{border:1px solid #555;padding:4px 6px;vertical-align:top}
     .inv .nc{text-align:center;width:26px}
     .inv .ca{text-align:center;width:38px}
     .inv .se{width:72px}
     /* Observaciones */
     .obs{border:1px solid #bbb;margin:8px 0}
-    .ob-r{padding:4px 8px;border-bottom:1px solid #ddd}
+    .ob-r{padding:5px 8px;border-bottom:1px solid #ddd}
     .ob-r:last-child{border-bottom:none}
-    .ob-l{font-size:9px;font-weight:700;text-transform:uppercase;color:#555;margin-bottom:1px}
-    .ob-v{font-size:10.5px;min-height:14px}
-    /* Firma */
-    .sig{margin-top:40px;text-align:center;page-break-inside:avoid}
+    .ob-l{font-size:9.5px;font-weight:700;text-transform:uppercase;color:#555;margin-bottom:2px}
+    .ob-v{font-size:11px;min-height:14px}
+    /* Firma — separación generosa respecto a fotos */
+    .sig{margin-top:52px;text-align:center;page-break-inside:avoid}
     .sig img{height:68px;display:block;margin:0 auto}
-    .sig-ln{border-top:1px solid #111;width:220px;margin:0 auto}
-    .sig-nm{font-size:10.5px;font-weight:700;margin-top:4px}
-    .sig-cg{font-size:9.5px;color:#444;margin-top:1px}
-    /* Fotos */
-    .fg{width:100%;border-collapse:collapse;margin-top:10px}
+    .sig-ln{border-top:1px solid #111;width:220px;margin:4px auto 0}
+    .sig-nm{font-size:11px;font-weight:700;margin-top:6px}
+    .sig-cg{font-size:10px;color:#444;margin-top:3px;line-height:1.5}
+    /* Fotos — recorte apaisado fijo, sin deformación */
+    .fg{width:100%;border-collapse:collapse;margin-top:12px}
     .fg td{padding:4px;vertical-align:top;width:33.33%}
-    .fg img{width:100%;height:150px;object-fit:cover;border:1px solid #ccc;display:block}
+    .fg-img{width:100%;height:120px;overflow:hidden;border:1px solid #ccc;position:relative}
+    .fg-img img{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:100%;height:100%;object-fit:cover;object-position:center}
     @page{size:letter;margin:0}
     @media print{.page,.page-last{page-break-after:always}}
   `;
@@ -1459,7 +1462,7 @@ function buildPDFHTML(p,m,rec,isT,items,photos,sig){
     for(let i=0;i<photos.length;i+=fotosPerPage) chunks.push(photos.slice(i,i+fotosPerPage));
     chunks.forEach((chunk,ci)=>{
       const isLastPage=ci===chunks.length-1;
-      const cells=chunk.map(ph=>`<td><img src="${ph}" alt=""></td>`);
+    const cells=chunk.map(ph=>`<td><div class="fg-img"><img src="${ph}" alt=""></div></td>`);
       let rows='';for(let i=0;i<cells.length;i+=3) rows+=`<tr>${cells.slice(i,i+3).join('')}</tr>`;
       const cls=isLastPage?'page-last':'page';
       fotoPages+=`<div class="${cls}">
@@ -1488,9 +1491,9 @@ function buildPDFHTML(p,m,rec,isT,items,photos,sig){
     return docOpen+`
       <div class="${pg1cls}">
         ${hdr('ACTA DE INVENTARIO DE EQUIPOS Y ELEMENTOS DE RIEGO',`CONCURSO ${concurso} , REGIÓN DE ÑUBLE , LEY 18.450`)}
-        <div class="sec">1.- IDENTIFICACIÓN:</div>
+        <div class="sec sec-id">1.- IDENTIFICACIÓN:</div>
         ${idT()}
-        <div class="sec">${secInv}</div>
+        <div class="sec sec-inv">${secInv}</div>
         ${invTable}
         ${obsBlock}
         ${sigPag1}
@@ -1505,9 +1508,9 @@ function buildPDFHTML(p,m,rec,isT,items,photos,sig){
     return docOpen+`
       <div class="${pg1cls}">
         ${hdr('ACTA DE VISITA INICIO DE OBRAS',`CONCURSO ${concurso}, LEY 18.450`)}
-        <div class="sec">1.- IDENTIFICACIÓN:</div>
+        <div class="sec sec-id">1.- IDENTIFICACIÓN:</div>
         ${idT()}
-        <div class="sec">DATOS DE INICIO DE OBRAS:</div>
+        <div class="sec sec-inv">DATOS DE INICIO DE OBRAS:</div>
         <table class="id-t">
           <tr><td class="lb">Fecha inicio de obras</td><td class="sp">:</td><td class="vl">${x(rec['_f_ini']||'')}</td></tr>
           <tr><td class="lb">Plazo ejecución</td><td class="sp">:</td><td class="vl">${x(rec['_plazo']||'')} días</td></tr>
@@ -1530,9 +1533,9 @@ function buildPDFHTML(p,m,rec,isT,items,photos,sig){
   return docOpen+`
     <div class="${pg1cls}">
       ${hdr(`ACTA DE SUPERVISIÓN — PROYECTO ${x(p['Código Proyecto']||'')}`, 'LEY 18.450')}
-      <div class="sec">1.- IDENTIFICACIÓN:</div>
+      <div class="sec sec-id">1.- IDENTIFICACIÓN:</div>
       ${idT()}
-      <div class="sec">VISITA DE SUPERVISIÓN INTERMEDIA:</div>
+      <div class="sec sec-inv">VISITA DE SUPERVISIÓN INTERMEDIA:</div>
       <table class="id-t">
         <tr><td class="lb">Fecha visita</td><td class="sp">:</td><td class="vl">${x(rec['_f_vis']||'')}</td></tr>
         <tr><td class="lb">% Avance estimado</td><td class="sp">:</td><td class="vl">${x(rec['_av']||'0')}%</td></tr>
@@ -1544,7 +1547,7 @@ function buildPDFHTML(p,m,rec,isT,items,photos,sig){
         <div class="ob-r"><div class="ob-l">Observaciones técnicas</div><div class="ob-v">${x(rec['_obs_vis']||'')}</div></div>
         <div class="ob-r"><div class="ob-l">Acuerdos y compromisos</div><div class="ob-v">${x(rec['_acuerd']||'')}</div></div>
       </div>
-      ${items.length?`<div class="sec">INVENTARIO:</div>${invTable}`:''}
+      ${items.length?`<div class="sec sec-inv">INVENTARIO:</div>${invTable}`:''}
       ${sigPag1}
     </div>
     ${fotoPages}
