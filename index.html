@@ -989,7 +989,7 @@ function bIdent(p,isT,rec){
 
 /* ── INVENTARIO ─────────────────────────────────── */
 function bInvT(p,m){
-  const ik=`inv_${p['Código Proyecto']}_${m}`;
+  const ik=`inv_${p['Código Proyecto']}_${m==='recepcion'?'recepcion':'datos'}`;
   const items=S.inv[ik]||[{}];
   const rows=items.map((it,i)=>`<tr>
     <td class="nc">${i+1}</td>
@@ -1012,7 +1012,7 @@ function bInvT(p,m){
 }
 
 function bInvC(p,m){
-  const ik=`inv_${p['Código Proyecto']}_${m}`;
+  const ik=`inv_${p['Código Proyecto']}_${m==='recepcion'?'recepcion':'datos'}`;
   const items=S.inv[ik]||[{}];
   const rows=items.map((it,i)=>`<tr>
     <td class="nc">${i+1}</td>
