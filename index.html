@@ -1823,36 +1823,58 @@ function importProject(){
     fr.onload=ev=>{
       try{
         const data=JSON.parse(ev.target.result);
-        if(!data.allProjects||!data.allProjects.length){toast('⚠️ Archivo inválido');return;}
+        if(!data.allProjects||!data.allProjects.length){
+          toast('⚠️ Archivo inválido');
+          return;
+        }
+        
+        // Preguntar solo UNA VEZ si hay conflictos
+        const conflicts=[];
+        for(const proj of data.allProjects){
+          const cod=proj['Código Proyecto'];
+          if(S.allProjects.some(p=>p['Código Proyecto']===cod)){
+            conflicts.push(cod);
+          }
+        }
+        
+        // Si hay conflictos, preguntar qué hacer con TODOS
+        let replace=true;
+        if(conflicts.length>0){
+          replace=confirm(`${conflicts.length} proyecto(s) ya existen:\n${conflicts.join(', ')}\n\n¿Reemplazarlos?`);
+        }
+        
+        // Importar
         let imported=0;
         for(const proj of data.allProjects){
-          const cod=(proj['Código Proyecto']||'').trim();
-          const exists=S.allProjects.find(p=>(p['Código Proyecto']||'').trim()===cod);
-          console.log('[importProject] checking cod='+cod+' exists='+!!exists);
-          if(exists){
-            // Solo preguntar si ya existe
-            if(confirm(`Proyecto ${cod} ya existe.\n¿Reemplazarlo?`)){
-              const idx=S.allProjects.findIndex(p=>(p['Código Proyecto']||'').trim()===cod);
+          const cod=proj['Código Proyecto'];
+          const idx=S.allProjects.findIndex(p=>p['Código Proyecto']===cod);
+          if(idx>=0){
+            // Existe
+            if(replace){
               S.allProjects[idx]=proj;
               imported++;
             }
           } else {
-            // No existe → cargar directamente sin preguntar
+            // No existe
             S.allProjects.push(proj);
             imported++;
           }
         }
-        // Fusionar datos de este archivo
+        
+        // Fusionar datos
         Object.assign(S.rec,data.rec||{});
         Object.assign(S.inv,data.inv||{});
         Object.assign(S.ph,data.ph||{});
         Object.assign(S.files,data.files||{});
         Object.assign(S.sigs,data.sigs||{});
+        
         persist();
         toast(`✅ ${imported} proyecto(s) importado(s)`,3000);
-        if(S.openCodes.length) renderCurrent();
-        else showPortada();
-      }catch(err){console.error('Import error:',err);toast('⚠️ Error al importar');}
+        showPortada();
+      }catch(err){
+        console.error('Import error:',err);
+        toast('⚠️ Error al importar');
+      }
     };
     fr.readAsText(file);
   };
