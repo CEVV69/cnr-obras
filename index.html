@@ -1803,7 +1803,7 @@ function exportProject(){
   if(!cod){toast('⚠️ Sin proyecto seleccionado');return;}
   const p=S.allProjects.find(r=>r['Código Proyecto']===cod);
   if(!p){toast('⚠️ Proyecto no encontrado');return;}
-  const payload={version:2,exported: new Date().toISOString(),deviceNote:'Exportado desde CNR Ñuble PWA (proyecto único)',allProjects: [p],openCodes: [cod],ci: 0,mod: S.mod,rec: Object.fromEntries(Object.entries(S.rec).filter(([k])=>k.startsWith('r_'+cod))),inv: Object.fromEntries(Object.entries(S.inv).filter(([k])=>k.startsWith('inv_'+cod))),ph: Object.fromEntries(Object.entries(S.ph).filter(([k])=>k.startsWith('ph_'+cod))),files: Object.fromEntries(Object.entries(S.files).filter(([k])=>k.startsWith('f_'+cod))),sigs: Object.fromEntries(Object.entries(S.sigs).filter(([k])=>k.startsWith('sig_'+cod)))};
+  const payload={version:2,exported: new Date().toISOString(),deviceNote:'Exportado desde CNR Ñuble PWA (proyecto único)',allProjects: [p],openCodes: [cod],ci: 0,mod: S.mod,rec: Object.fromEntries(Object.entries(S.rec).filter(([k])=>k.startsWith(cod+'_'))),inv: Object.fromEntries(Object.entries(S.inv).filter(([k])=>k.startsWith('inv_'+cod))),ph: Object.fromEntries(Object.entries(S.ph).filter(([k])=>k.startsWith('ph_'+cod))),files: Object.fromEntries(Object.entries(S.files).filter(([k])=>k.startsWith('f_'+cod))),sigs: Object.fromEntries(Object.entries(S.sigs).filter(([k])=>k.startsWith('sig_'+cod)))};
   const json=JSON.stringify(payload,null,2);
   const blob=new Blob([json],{type:'application/json;charset=utf-8'});
   const url=URL.createObjectURL(blob);
@@ -1832,49 +1832,64 @@ function importProject(){
           toast('⚠️ Archivo inválido');
           return;
         }
-        
-        // Preguntar solo UNA VEZ si hay conflictos
-        const conflicts=[];
-        for(const proj of data.allProjects){
-          const cod=proj['Código Proyecto'];
-          if(S.allProjects.some(p=>p['Código Proyecto']===cod)){
-            conflicts.push(cod);
-          }
-        }
-        
-        // Si hay conflictos, preguntar qué hacer con TODOS
-        let replace=true;
+
+        const incoming=data.allProjects;
+
+        // Conflictos = proyectos que ya están ABIERTOS (en openCodes), no en el Excel
+        const conflicts=incoming
+          .map(p=>p['Código Proyecto'])
+          .filter(cod=>S.openCodes.includes(cod));
+
+        let replaceConflicts=false;
         if(conflicts.length>0){
-          replace=confirm(`${conflicts.length} proyecto(s) ya existen:\n${conflicts.join(', ')}\n\n¿Reemplazarlos?`);
+          replaceConflicts=confirm(
+            `${conflicts.length} proyecto(s) ya están abiertos en este dispositivo:\n${conflicts.join(', ')}\n\n¿Reemplazar sus datos con los del archivo?\n[OK] = Reemplazar  [Cancelar] = Conservar los actuales`
+          );
         }
-        
-        // Importar
-        let imported=0;
-        for(const proj of data.allProjects){
+
+        // Agregar códigos a openCodes (sin duplicar) y actualizar allProjects si el proyecto no está en el Excel
+        let added=0, replaced=0;
+        for(const proj of incoming){
           const cod=proj['Código Proyecto'];
-          const idx=S.allProjects.findIndex(p=>p['Código Proyecto']===cod);
-          if(idx>=0){
-            // Existe
-            if(replace){
-              S.allProjects[idx]=proj;
-              imported++;
-            }
-          } else {
-            // No existe
+          const alreadyOpen=S.openCodes.includes(cod);
+
+          if(alreadyOpen && !replaceConflicts) continue; // saltar
+
+          // Si el proyecto no existe en el Excel local, agregarlo
+          if(!S.allProjects.some(p=>p['Código Proyecto']===cod)){
             S.allProjects.push(proj);
-            imported++;
           }
+
+          // Agregar a openCodes si no está
+          if(!alreadyOpen) S.openCodes.push(cod);
+
+          if(alreadyOpen){ replaced++; } else { added++; }
         }
-        
-        // Fusionar datos
-        Object.assign(S.rec,data.rec||{});
-        Object.assign(S.inv,data.inv||{});
-        Object.assign(S.ph,data.ph||{});
-        Object.assign(S.files,data.files||{});
-        Object.assign(S.sigs,data.sigs||{});
-        
+
+        // Merge datos de formulario
+        // Para proyectos con conflicto que el usuario aceptó reemplazar: sobrescribir sus claves
+        // Para proyectos nuevos: solo agregar claves inexistentes
+        const srcRec=data.rec||{}, srcInv=data.inv||{}, srcPh=data.ph||{};
+        const srcFiles=data.files||{}, srcSigs=data.sigs||{};
+
+        const mergeSelective=(target,src,overwriteCodes,extractCod)=>{
+          for(const k in src){
+            const cod=extractCod(k);
+            if(overwriteCodes.includes(cod)||!(k in target)) target[k]=src[k];
+          }
+        };
+        const oc=replaceConflicts?conflicts:[];
+        mergeSelective(S.rec,   srcRec,   oc, k=>k.split('_')[0]);
+        mergeSelective(S.inv,   srcInv,   oc, k=>k.replace(/^inv_/,'').split('_')[0]);
+        mergeSelective(S.ph,    srcPh,    oc, k=>k.replace(/^ph_/,'').split('_')[0]);
+        mergeSelective(S.files, srcFiles, oc, k=>k.replace(/^f_/,'').split('_')[0]);
+        mergeSelective(S.sigs,  srcSigs,  oc, k=>k.replace(/^sig_/,'').split('_')[0]);
+
         persist();
-        toast(`✅ ${imported} proyecto(s) importado(s)`,3000);
+        const parts=[];
+        if(added)    parts.push(`${added} nuevo(s)`);
+        if(replaced) parts.push(`${replaced} reemplazado(s)`);
+        toast(`✅ ${parts.join(', ')} proyecto(s) importado(s)`,3000);
         showPortada();
       }catch(err){
         console.error('Import error:',err);
