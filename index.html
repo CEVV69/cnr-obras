@@ -1207,26 +1207,53 @@ function bInicio(p,isT,rec,rk){
     +`<div class="slabel" style="margin-top:6px">DATOS DE INICIO DE OBRAS:</div>
     <div class="frow"><span class="fl">Fecha inicio de obras</span><span class="fc">:</span><span class="fi" style="max-width:200px">${edt('_f_ini',rec)}</span></div>
     
-    <div class="slabel" style="margin-top:12px">VERIFICACIONES INICIALES:</div>
-    <div style="margin-bottom:12px">
-      <div style="font-size:13px;font-weight:500;color:#1a2a3a;margin-bottom:6px">a) Verificación de Obra Nueva: Se confirma que los trabajos contemplados en el proyecto aún no se han ejecutado, asegurando que se trata efectivamente de una obra nueva</div>
-      <div style="max-width:200px">${esel('_verif_nueva',rec,['— Seleccione —','Sí','No'])}</div>
+    <div class="slabel" style="margin-top:12px">VERIFICACIONES:</div>
+    <div style="margin-bottom:10px;display:flex;align-items:flex-start;gap:8px">
+      <select data-f="_verif_nueva" style="background:white;border:1px solid #ccc;padding:4px 6px;border-radius:3px;font-size:12px;min-width:80px;flex-shrink:0">
+        <option value="">— Seleccione —</option>
+        <option value="Sí" ${rec['_verif_nueva']==='Sí'?'selected':''}>Sí</option>
+        <option value="No" ${rec['_verif_nueva']==='No'?'selected':''}>No</option>
+      </select>
+      <div style="font-size:13px;color:#1a2a3a;line-height:1.4">a) Verificación de Obra Nueva: Se confirma que los trabajos contemplados en el proyecto aún no se han ejecutado, asegurando que se trata efectivamente de una obra nueva</div>
     </div>
     
-    <div style="margin-bottom:12px">
-      <div style="font-size:13px;font-weight:500;color:#1a2a3a;margin-bottom:6px">b) Validación de Documentación en Terreno: Exigir que el beneficiario tenga a disposición el Libro de Obras y el plano impreso del proyecto en el sitio</div>
-      <div style="max-width:200px">${esel('_verif_docs',rec,['— Seleccione —','Sí','No'])}</div>
+    <div style="margin-bottom:10px;display:flex;align-items:flex-start;gap:8px">
+      <select data-f="_verif_docs" style="background:white;border:1px solid #ccc;padding:4px 6px;border-radius:3px;font-size:12px;min-width:80px;flex-shrink:0">
+        <option value="">— Seleccione —</option>
+        <option value="Sí" ${rec['_verif_docs']==='Sí'?'selected':''}>Sí</option>
+        <option value="No" ${rec['_verif_docs']==='No'?'selected':''}>No</option>
+      </select>
+      <div style="font-size:13px;color:#1a2a3a;line-height:1.4">b) Validación de Documentación en Terreno: Exigir que el beneficiario tenga a disposición el Libro de Obras y el plano impreso del proyecto en el sitio</div>
     </div>
     
-    <div style="margin-bottom:12px">
-      <div style="font-size:13px;font-weight:500;color:#1a2a3a;margin-bottom:6px">c) Aprobación del Beneficiario: Verificar fehacientemente que el beneficiario conoce y aprueba el proyecto técnico que se va a construir</div>
-      <div style="max-width:200px">${esel('_verif_aprob',rec,['— Seleccione —','Sí','No'])}</div>
+    <div style="margin-bottom:10px;display:flex;align-items:flex-start;gap:8px">
+      <select data-f="_verif_aprob" style="background:white;border:1px solid #ccc;padding:4px 6px;border-radius:3px;font-size:12px;min-width:80px;flex-shrink:0">
+        <option value="">— Seleccione —</option>
+        <option value="Sí" ${rec['_verif_aprob']==='Sí'?'selected':''}>Sí</option>
+        <option value="No" ${rec['_verif_aprob']==='No'?'selected':''}>No</option>
+      </select>
+      <div style="font-size:13px;color:#1a2a3a;line-height:1.4">c) Aprobación del Beneficiario: Verificar fehacientemente que el beneficiario conoce y aprueba el proyecto técnico que se va a construir</div>
     </div>
     
-    <div style="margin-bottom:12px">
-      <div style="font-size:13px;font-weight:500;color:#1a2a3a;margin-bottom:6px">d) Instrucciones Técnicas: Realizar todas las aclaraciones y precisiones necesarias para asegurar que la construcción se ajuste al proyecto aprobado</div>
-      <div style="max-width:200px">${esel('_verif_instr',rec,['— Seleccione —','Sí','No'])}</div>
+    <div style="margin-bottom:10px;display:flex;align-items:flex-start;gap:8px">
+      <select data-f="_verif_instr" style="background:white;border:1px solid #ccc;padding:4px 6px;border-radius:3px;font-size:12px;min-width:80px;flex-shrink:0">
+        <option value="">— Seleccione —</option>
+        <option value="Sí" ${rec['_verif_instr']==='Sí'?'selected':''}>Sí</option>
+        <option value="No" ${rec['_verif_instr']==='No'?'selected':''}>No</option>
+      </select>
+      <div style="font-size:13px;color:#1a2a3a;line-height:1.4">d) Instrucciones Técnicas: Realizar todas las aclaraciones y precisiones necesarias para asegurar que la construcción se ajuste al proyecto aprobado</div>
     </div>
+    
+    <div class="slabel" style="margin-top:12px">ANTECEDENTES Y DOCUMENTOS:</div>
+    <div class="arch-row" style="justify-content:center">${(() => {
+      const cod=p['Código Proyecto'];
+      const slots=['Presupuesto','Plano','Cubicaciones','Otro Antecedente'];
+      return slots.map(sl=>{
+        const fk=`f_${cod}_${sl.replace(/ /g,'_')}`;
+        const fi=S.files[fk];
+        return `<div class="arch-slot" onclick="upFile('${fk}','${sl}',this)"><span class="arch-lbl">${sl}</span><div class="arch-box ${fi?'has':''}">${fi?'📎':''}</div></div>`;
+      }).join('');
+    })()}</div>
     
     <div class="obs-box" style="margin-top:12px">
       <div class="obs-fld"><div class="obs-lbl">Compromisos y acuerdos</div><textarea data-f="_comp" rows="3">${x(rec['_comp']||'')}</textarea></div>
