@@ -431,7 +431,6 @@ body{background:#b8bec8}
 
   <!-- HEADER -->
   <div id="hdr">
-    <div class="pwr" onclick="goPortada()" title="Volver al inicio" style="font-size:16px">🏠</div>
     <div class="hico hico-export" id="btn-export-proj" onclick="exportProject()" title="Exportar proyecto" style="display:none">💾</div>
     <div class="hico hico-import" id="btn-import-proj" onclick="importProject()" title="Importar proyecto" style="display:none">📂</div>
     <div class="htitle" style="flex:1;text-align:center">
@@ -736,6 +735,8 @@ function showPortada(){
   if(el3)el3.style.display='none';
   
   // Hide all form buttons, show only config
+  const btnHome=document.getElementById('btn-home-form');
+  if(btnHome)btnHome.style.display='none';
   document.getElementById('btn-export-proj').style.display='none';
   document.getElementById('btn-import-proj').style.display='none';
   document.getElementById('btn-info').style.display='none';
@@ -870,6 +871,22 @@ function renderCurrent(){
   const btnEmail=document.getElementById('btn-email');
   const btnPreview=document.getElementById('btn-preview');
   const btnPrint=document.getElementById('btn-print');
+  
+  // Crear botón home si no existe
+  let btnHome=document.getElementById('btn-home-form');
+  if(!btnHome){
+    btnHome=document.createElement('div');
+    btnHome.id='btn-home-form';
+    btnHome.className='pwr';
+    btnHome.onclick=()=>goPortada();
+    btnHome.title='Volver al inicio';
+    btnHome.style.fontSize='16px';
+    btnHome.textContent='🏠';
+    document.getElementById('hdr').insertBefore(btnHome, document.getElementById('hdr').firstChild);
+  }
+  
+  // Show/hide buttons
+  if(btnHome)btnHome.style.display='block';
   if(btnCfg)btnCfg.style.display='none';
   if(btnExp)btnExp.style.display='block';
   if(btnImp)btnImp.style.display='block';
@@ -1809,12 +1826,13 @@ function importProject(){
         if(!data.allProjects||!data.allProjects.length){toast('⚠️ Archivo inválido');return;}
         let imported=0;
         for(const proj of data.allProjects){
-          const cod=proj['Código Proyecto'];
-          const exists=S.allProjects.find(p=>p['Código Proyecto']===cod);
+          const cod=(proj['Código Proyecto']||'').trim();
+          const exists=S.allProjects.find(p=>(p['Código Proyecto']||'').trim()===cod);
+          console.log('[importProject] checking cod='+cod+' exists='+!!exists);
           if(exists){
             // Solo preguntar si ya existe
             if(confirm(`Proyecto ${cod} ya existe.\n¿Reemplazarlo?`)){
-              const idx=S.allProjects.findIndex(p=>p['Código Proyecto']===cod);
+              const idx=S.allProjects.findIndex(p=>(p['Código Proyecto']||'').trim()===cod);
               S.allProjects[idx]=proj;
               imported++;
             }
