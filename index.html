@@ -988,8 +988,7 @@ function bIdent(p,isT,rec){
     <div class="frow"><span class="fl">Representante</span><span class="fc">:</span><span class="fi">${ei('_rep','',rec)}</span></div>
     <div class="frow"><span class="fl">Rol</span><span class="fc">:</span><span class="fi">${pi('Rol',p)}</span></div>
     <div class="frow"><span class="fl">Predio</span><span class="fc">:</span><span class="fi">${pi('Predio',p)}</span></div>
-    <div class="frow"><span class="fl">Comuna</span><span class="fc">:</span><span class="fi" style="max-width:200px">${pi('Comuna',p)}</span></div>
-    <div class="frow" style="margin-top:-4px;margin-bottom:0">${gps}</div>
+    <div class="frow" style="position:relative;overflow:visible"><span class="fl">Comuna</span><span class="fc">:</span><span class="fi" style="max-width:150px">${pi('Comuna',p)}</span><div style="position:absolute;right:0;top:50%;transform:translateY(-50%)">${gps}</div></div>
     <div class="frow"><span class="fl">Provincia</span><span class="fc">:</span><span class="fi" style="max-width:200px">${pi('Provincia',p)}</span></div>
     ${civil}
     <div class="frow"><span class="fl">Fecha</span><span class="fc">:</span><span class="fi" style="max-width:200px">${edt('_fecha',rec)}</span></div>
