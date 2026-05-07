@@ -1082,15 +1082,9 @@ function attachInv(){
 
 /* ── OBS ─────────────────────────────────────────── */
 function bObs(rec){
-  return `<div style="margin-top:10px">
-    <div style="margin-bottom:8px">
-      <div class="obs-lbl">Observación modificaciones u otro</div>
-      <textarea data-f="_obs" rows="2" style="width:100%;border:none;border-bottom:1px solid #b0b8c8;padding:4px;font-size:12px;font-family:inherit;resize:vertical;min-height:44px;background:transparent;color:#1a2a3a;outline:none">${x(rec['_obs']||'')}</textarea>
-    </div>
-    <div>
-      <div class="obs-lbl">Pendientes a la recepción</div>
-      <textarea data-f="_pend" rows="1" style="width:100%;border:none;border-bottom:1px solid #b0b8c8;padding:4px;font-size:12px;font-family:inherit;resize:vertical;min-height:32px;background:transparent;color:#1a2a3a;outline:none">${x(rec['_pend']||'')}</textarea>
-    </div>
+  return `<div class="obs-box" style="margin-top:20px;margin-bottom:20px">
+    <div class="obs-fld"><div class="obs-lbl">Observación modificaciones u otro</div><textarea data-f="_obs" rows="2" style="min-height:44px">${x(rec['_obs']||'')}</textarea></div>
+    <div class="obs-fld"><div class="obs-lbl">Pendientes a la recepción</div><textarea data-f="_pend" rows="1" style="min-height:32px">${x(rec['_pend']||'')}</textarea></div>
   </div>`;
 }
 
