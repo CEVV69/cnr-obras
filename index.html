@@ -996,8 +996,7 @@ function bIdent(p,isT,rec){
     <div class="frow"><span class="fl">Comuna</span><span class="fc">:</span><span class="fi" style="max-width:200px">${pi('Comuna',p)}</span></div>
     <div class="frow"><span class="fl">Provincia</span><span class="fc">:</span><span class="fi" style="max-width:200px">${pi('Provincia',p)}</span></div>
     ${civil}
-    <div class="frow"><span class="fl">Fecha</span><span class="fc">:</span><span class="fi" style="max-width:200px">${edt('_fecha',rec)}</span></div>
-    <div class="arch-row" style="justify-content:center">${archSlots}</div>`;
+    <div class="frow"><span class="fl">Fecha</span><span class="fc">:</span><span class="fi" style="max-width:200px">${edt('_fecha',rec)}</span></div>`;
 }
 
 /* ── INVENTARIO ─────────────────────────────────── */
@@ -1194,7 +1193,11 @@ function clearSig(rk){const cv=document.getElementById('sig-'+rk);if(cv)cv.getCo
 
 /* ── SCREEN ASSEMBLERS ──────────────────────────── */
 function bRecepcion(p,isT,rec,rk){
+  const cod=p['Código Proyecto'];
+  const slots=isT?['Presupuesto','Plano','Detalle Fotovoltaico','Otro Antecedente']:['Presupuesto','Plano','Cubicaciones','Otro Antecedente'];
+  const archSlots=slots.map(sl=>{const fk=`f_${cod}_${sl.replace(/ /g,'_')}`;const fi=S.files[fk];return `<div class="arch-slot" onclick="upFile('${fk}','${sl}',this)"><span class="arch-lbl">${sl}</span><div class="arch-box ${fi?'has':''}">${fi?'📎':''}</div></div>`;}).join('');
   return bIdent(p,isT,rec)
+    +`<div class="arch-row" style="justify-content:center">${archSlots}</div>`
     +(isT?bInvT(p,'recepcion'):bInvC(p,'recepcion'))
     +bObs(rec)
     +bFotos(p,isT,'recepcion')
@@ -1221,13 +1224,10 @@ function bInicio(p,isT,rec,rk){
     }
   };
   const vRow=(f,key)=>`
-    <div style="margin-bottom:10px;display:flex;align-items:flex-start;gap:8px">
-      <select data-f="${f}" style="background:white;border:1px solid #ccc;padding:3px 4px;border-radius:3px;font-size:12px;min-width:52px;flex-shrink:0">
-        <option value="">—</option>
-        <option value="Sí" ${rec[f]==='Sí'?'selected':''}>Sí</option>
-        <option value="No" ${rec[f]==='No'?'selected':''}>No</option>
-      </select>
-      <div style="font-size:13px;color:#1a2a3a;line-height:1.4">${rec[f]==='No'?vT[key].no:vT[key].si}</div>
+    <div style="margin-bottom:10px;font-size:13px;color:#1a2a3a;line-height:1.4">${rec[f]==='No'?vT[key].no:vT[key].si}</div>
+    <div style="margin-bottom:8px;display:flex;gap:6px">
+      <button onclick="(function(){var s=S.rec['${rk}']||{};s['${f}']='Sí';S.rec['${rk}']=s;persist();renderCurrent();})()" style="padding:3px 10px;border-radius:4px;border:1px solid #bbb;font-size:12px;cursor:pointer;background:${rec[f]==='Sí'?'#2e7d32':'#fff'};color:${rec[f]==='Sí'?'#fff':'#333'}">Sí</button>
+      <button onclick="(function(){var s=S.rec['${rk}']||{};s['${f}']='No';S.rec['${rk}']=s;persist();renderCurrent();})()" style="padding:3px 10px;border-radius:4px;border:1px solid #bbb;font-size:12px;cursor:pointer;background:${rec[f]==='No'?'#c62828':'#fff'};color:${rec[f]==='No'?'#fff':'#333'}">No</button>
     </div>`;
 
   return bIdent(p,isT,rec)
