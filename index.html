@@ -1236,6 +1236,9 @@ function bInicio(p,isT,rec,rk){
     ${vRow('_verif_docs','docs')}
     ${vRow('_verif_aprob','aprob')}
     ${vRow('_verif_instr','instr')}
+    <div class="obs-box" style="margin-top:12px">
+      <div class="obs-fld"><div class="obs-lbl">Observaciones, compromisos y acuerdos</div><textarea data-f="_comp" rows="3">${x(rec['_comp']||'')}</textarea></div>
+    </div>
     <div class="slabel" style="margin-top:12px">ANTECEDENTES Y DOCUMENTOS:</div>
     <div class="arch-row" style="justify-content:center">${(()=>{
       const cod=p['Código Proyecto'];
@@ -1245,10 +1248,7 @@ function bInicio(p,isT,rec,rk){
         const fi=S.files[fk];
         return `<div class="arch-slot" onclick="upFile('${fk}','${sl}',this)"><span class="arch-lbl">${sl}</span><div class="arch-box ${fi?'has':''}">${fi?'📎':''}</div></div>`;
       }).join('');
-    })()}</div>
-    <div class="obs-box" style="margin-top:12px">
-      <div class="obs-fld"><div class="obs-lbl">Observaciones, compromisos y acuerdos</div><textarea data-f="_comp" rows="3">${x(rec['_comp']||'')}</textarea></div>
-    </div>`
+    })()}</div>`
     +bFotos(p,isT,'inicio')+bFirma(rec,rk);
 }
 function bVisita(p,isT,rec,rk){
@@ -1725,8 +1725,7 @@ function buildPDFHTML(p,m,rec,isT,items,photos,sig){
     const vLine=(key,f)=>{
       const v=rec[f]||'';
       const txt=v==='No'?vTxt[key].no:vTxt[key].si;
-      const badge=v?`<span style="display:inline-block;border:1px solid #555;border-radius:3px;padding:1px 6px;font-size:9.5px;font-weight:700;margin-right:6px;vertical-align:middle">${v}</span>`:'';
-      return `<div style="display:flex;align-items:baseline;gap:4px;margin-bottom:6px;font-size:10.5px;line-height:1.5">${badge}<span>${txt}</span></div>`;
+      return `<div style="margin-bottom:6px;font-size:10.5px;line-height:1.5">${txt}</div>`;
     };
 
     // Fotos inicio en 3 columnas
