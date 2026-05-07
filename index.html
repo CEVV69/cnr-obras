@@ -1082,9 +1082,15 @@ function attachInv(){
 
 /* ── OBS ─────────────────────────────────────────── */
 function bObs(rec){
-  return `<div class="obs-box" style="margin-top:10px">
-    <div class="obs-fld"><div class="obs-lbl">Observación modificaciones u otro</div><textarea data-f="_obs" rows="2" style="min-height:44px">${x(rec['_obs']||'')}</textarea></div>
-    <div class="obs-fld"><div class="obs-lbl">Pendientes a la recepción</div><textarea data-f="_pend" rows="1" style="min-height:32px">${x(rec['_pend']||'')}</textarea></div>
+  return `<div style="margin-top:10px">
+    <div style="margin-bottom:8px">
+      <div class="obs-lbl">Observación modificaciones u otro</div>
+      <textarea data-f="_obs" rows="2" style="width:100%;border:none;border-bottom:1px solid #b0b8c8;padding:4px;font-size:12px;font-family:inherit;resize:vertical;min-height:44px;background:transparent;color:#1a2a3a;outline:none">${x(rec['_obs']||'')}</textarea>
+    </div>
+    <div>
+      <div class="obs-lbl">Pendientes a la recepción</div>
+      <textarea data-f="_pend" rows="1" style="width:100%;border:none;border-bottom:1px solid #b0b8c8;padding:4px;font-size:12px;font-family:inherit;resize:vertical;min-height:32px;background:transparent;color:#1a2a3a;outline:none">${x(rec['_pend']||'')}</textarea>
+    </div>
   </div>`;
 }
 
@@ -1549,12 +1555,10 @@ function buildPDFHTML(p,m,rec,isT,items,photos,sig){
 
     // ── TECNIFICACIÓN ──────────────────────────────────────────────
     if(isT){
-      const obsBlock=(rec['_obs']||rec['_pend'])?`
+      const obsBlock=rec['_obs']?`
         <div class="obs">
-          <div class="ob-r"><div class="ob-l">Observación modificaciones u otro</div><div class="ob-v">${x(rec['_obs']||'')}</div></div>
-          <div class="ob-r"><div class="ob-l">Pendientes a la recepción</div><div class="ob-v">${x(rec['_pend']||'')}</div></div>
-        </div>`:'';
-      return docOpen+`
+          <div class="ob-r"><div class="ob-l">Observación modificaciones u otro</div><div class="ob-v">${x(rec['_obs'])}</div></div>
+        </div>`:'';      return docOpen+`
         <div class="${pg1cls}">
           ${hdr('ACTA DE INVENTARIO DE EQUIPOS Y ELEMENTOS DE RIEGO',`CONCURSO ${concurso} , REGIÓN DE ÑUBLE , LEY 18.450`)}
           <div class="sec sec-id">1.- IDENTIFICACIÓN:</div>
@@ -1821,7 +1825,7 @@ function getPDFData(){
   const p=S.allProjects.find(r=>r['Código Proyecto']===cod);if(!p)return null;
   const m=S.mod,rk=`${cod}_${m}`,rec=S.rec[rk]||{};
   const isT=String(p['Tipo Obra']||'').toLowerCase().includes('tecnif');
-  const ik=`inv_${cod}_${m}`,items=S.inv[ik]||[];
+  const ik=`inv_${cod}_datos`,items=S.inv[ik]||[];
   const photos=S.ph[`ph_${cod}_${m}`]||[];
   const sig=S.sigs[rk]||'';
   return{p,m,rec,isT,items,photos,sig,cod};
