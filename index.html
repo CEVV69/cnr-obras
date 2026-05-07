@@ -981,21 +981,14 @@ function bIdent(p,isT,rec){
 
   return `
     <div class="slabel">1.- IDENTIFICACIÓN:</div>
-    <div class="frow">
-      <span class="fl">Código del proyecto</span><span class="fc">:</span>
-      <span class="fi" style="max-width:200px">${pi('Código Proyecto',p)}</span>
-    </div>
+    <div class="frow"><span class="fl">Código del proyecto</span><span class="fc">:</span><span class="fi" style="max-width:200px">${pi('Código Proyecto',p)}</span></div>
     <div class="frow"><span class="fl">CBRD N°</span><span class="fc">:</span><span class="fi" style="max-width:200px">${pi('CBRD',p)}</span></div>
     <div class="frow"><span class="fl">Nombre del proyecto</span><span class="fc">:</span><span class="fi">${pi('Nombre proyecto',p)}</span></div>
     <div class="frow"><span class="fl">Beneficiario</span><span class="fc">:</span><span class="fi">${pi('Nombre',p)}</span></div>
     <div class="frow"><span class="fl">Representante</span><span class="fc">:</span><span class="fi">${ei('_rep','',rec)}</span></div>
     <div class="frow"><span class="fl">Rol</span><span class="fc">:</span><span class="fi">${pi('Rol',p)}</span></div>
     <div class="frow"><span class="fl">Predio</span><span class="fc">:</span><span class="fi">${pi('Predio',p)}</span></div>
-    <div class="frow">
-      <span class="fl">Comuna</span><span class="fc">:</span>
-      <span class="fi" style="max-width:200px">${pi('Comuna',p)}</span>
-      <span style="margin-left:auto">${gps}</span>
-    </div>
+    <div class="frow" style="display:flex;gap:16px"><div style="flex:1"><span class="fl">Comuna</span><span class="fc">:</span><span class="fi" style="max-width:150px">${pi('Comuna',p)}</span></div><div>${gps}</div></div>
     <div class="frow"><span class="fl">Provincia</span><span class="fc">:</span><span class="fi" style="max-width:200px">${pi('Provincia',p)}</span></div>
     ${civil}
     <div class="frow"><span class="fl">Fecha</span><span class="fc">:</span><span class="fi" style="max-width:200px">${edt('_fecha',rec)}</span></div>
@@ -1243,17 +1236,6 @@ function bInicio(p,isT,rec,rk){
       </select>
       <div style="font-size:13px;color:#1a2a3a;line-height:1.4">d) Instrucciones Técnicas: Realizar todas las aclaraciones y precisiones necesarias para asegurar que la construcción se ajuste al proyecto aprobado</div>
     </div>
-    
-    <div class="slabel" style="margin-top:12px">ANTECEDENTES Y DOCUMENTOS:</div>
-    <div class="arch-row" style="justify-content:center">${(() => {
-      const cod=p['Código Proyecto'];
-      const slots=['Presupuesto','Plano','Cubicaciones','Otro Antecedente'];
-      return slots.map(sl=>{
-        const fk=`f_${cod}_${sl.replace(/ /g,'_')}`;
-        const fi=S.files[fk];
-        return `<div class="arch-slot" onclick="upFile('${fk}','${sl}',this)"><span class="arch-lbl">${sl}</span><div class="arch-box ${fi?'has':''}">${fi?'📎':''}</div></div>`;
-      }).join('');
-    })()}</div>
     
     <div class="obs-box" style="margin-top:12px">
       <div class="obs-fld"><div class="obs-lbl">Compromisos y acuerdos</div><textarea data-f="_comp" rows="3">${x(rec['_comp']||'')}</textarea></div>
