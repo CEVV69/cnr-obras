@@ -1237,6 +1237,17 @@ function bInicio(p,isT,rec,rk){
       <div style="font-size:13px;color:#1a2a3a;line-height:1.4">d) Instrucciones Técnicas: Realizar todas las aclaraciones y precisiones necesarias para asegurar que la construcción se ajuste al proyecto aprobado</div>
     </div>
     
+    <div class="slabel" style="margin-top:12px">ANTECEDENTES Y DOCUMENTOS:</div>
+    <div class="arch-row" style="justify-content:center">${(() => {
+      const cod=p['Código Proyecto'];
+      const slots=['Presupuesto','Plano','Cubicaciones','Otro Antecedente'];
+      return slots.map(sl=>{
+        const fk=`f_${cod}_${sl.replace(/ /g,'_')}`;
+        const fi=S.files[fk];
+        return `<div class="arch-slot" onclick="upFile('${fk}','${sl}',this)"><span class="arch-lbl">${sl}</span><div class="arch-box ${fi?'has':''}">${fi?'📎':''}</div></div>`;
+      }).join('');
+    })()}</div>
+    
     <div class="obs-box" style="margin-top:12px">
       <div class="obs-fld"><div class="obs-lbl">Compromisos y acuerdos</div><textarea data-f="_comp" rows="3">${x(rec['_comp']||'')}</textarea></div>
       <div class="obs-fld"><div class="obs-lbl">Observaciones</div><textarea data-f="_obs_ini" rows="2">${x(rec['_obs_ini']||'')}</textarea></div>
