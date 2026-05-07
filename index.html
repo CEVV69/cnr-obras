@@ -237,6 +237,11 @@ body{background:#b8bec8}
 ===================================================== */
 .inv-toolbar{background:linear-gradient(180deg,#5a6a8a,#4a5878);border-radius:8px 8px 0 0;display:flex;align-items:center;padding:5px 8px;min-height:38px}
 .itb-add,.itb-del{background:none;border:none;color:#fff;display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12px;font-weight:600;padding:4px 8px}
+.inv-ctrl{white-space:nowrap;padding:2px 4px!important;vertical-align:middle}
+.inv-btn-up,.inv-btn-down{background:none;border:1px solid #aab;border-radius:3px;color:#445;font-size:11px;cursor:pointer;padding:1px 4px;line-height:1.2;margin:0 1px}
+.inv-btn-up:hover,.inv-btn-down:hover{background:#e8eaf0}
+.inv-btn-del{background:none;border:1px solid #d88;border-radius:3px;color:#c33;font-size:11px;cursor:pointer;padding:1px 5px;line-height:1.2;margin-left:3px}
+.inv-btn-del:hover{background:#fee}
 .circ-plus{width:22px;height:22px;border-radius:50%;background:rgba(255,255,255,.25);border:1px solid rgba(255,255,255,.5);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700}
 .circ-minus{width:22px;height:22px;border-radius:50%;background:rgba(200,50,50,.5);border:1px solid rgba(255,100,100,.5);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700}
 .itb-mid{flex:1;text-align:center;color:#fff}
@@ -1000,25 +1005,50 @@ function bIdent(p,isT,rec){
 }
 
 /* ── INVENTARIO ─────────────────────────────────── */
-function bInvT(p,m){
-  const ik=`inv_${p['Código Proyecto']}_datos`;
-  const items=S.inv[ik]||[{}];
-  const rows=items.map((it,i)=>`<tr>
+function invRowT(ik,it,i,total){
+  const dis=(v)=>v?'opacity:.3;pointer-events:none':'';
+  return `<tr id="irow-${ik}-${i}">
     <td class="nc">${i+1}</td>
     <td><input data-ik="${ik}" data-r="${i}" data-c="elem" value="${x(it.elem||'')}"></td>
     <td><input data-ik="${ik}" data-r="${i}" data-c="mod"  value="${x(it.mod||'')}"></td>
     <td><input data-ik="${ik}" data-r="${i}" data-c="marc" value="${x(it.marc||'')}"></td>
     <td><input data-ik="${ik}" data-r="${i}" data-c="cant" type="number" value="${x(it.cant||'')}" style="max-width:48px"></td>
     <td><input data-ik="${ik}" data-r="${i}" data-c="ser"  value="${x(it.ser||'')}"></td>
-  </tr>`).join('');
+    <td class="inv-ctrl">
+      <button class="inv-btn-up"   onclick="invMove('${ik}','t',${i},-1)" title="Subir"   style="${dis(i===0)}">↑</button>
+      <button class="inv-btn-down" onclick="invMove('${ik}','t',${i},1)"  title="Bajar"   style="${dis(i===total-1)}">↓</button>
+      <button class="inv-btn-del"  onclick="invDel('${ik}','t',${i})"     title="Eliminar">✕</button>
+    </td>
+  </tr>`;
+}
+function invRowC(ik,it,i,total){
+  const dis=(v)=>v?'opacity:.3;pointer-events:none':'';
+  return `<tr id="irow-${ik}-${i}">
+    <td class="nc">${i+1}</td>
+    <td><input data-ik="${ik}" data-r="${i}" data-c="cant" type="number" value="${x(it.cant||'')}" style="max-width:48px"></td>
+    <td><input data-ik="${ik}" data-r="${i}" data-c="tipo" value="${x(it.tipo||'')}"></td>
+    <td><input data-ik="${ik}" data-r="${i}" data-c="dim"  value="${x(it.dim||'')}"></td>
+    <td><input data-ik="${ik}" data-r="${i}" data-c="coo"  value="${x(it.coo||'')}"></td>
+    <td><input data-ik="${ik}" data-r="${i}" data-c="obs"  value="${x(it.obs||'')}"></td>
+    <td class="inv-ctrl">
+      <button class="inv-btn-up"   onclick="invMove('${ik}','c',${i},-1)" title="Subir"   style="${dis(i===0)}">↑</button>
+      <button class="inv-btn-down" onclick="invMove('${ik}','c',${i},1)"  title="Bajar"   style="${dis(i===total-1)}">↓</button>
+      <button class="inv-btn-del"  onclick="invDel('${ik}','c',${i})"     title="Eliminar">✕</button>
+    </td>
+  </tr>`;
+}
+
+function bInvT(p,m){
+  const ik=`inv_${p['Código Proyecto']}_datos`;
+  const items=S.inv[ik]||[{}];
+  const rows=items.map((it,i)=>invRowT(ik,it,i,items.length)).join('');
   return `<div class="slabel">2.- INVENTARIO:</div>
     <div class="inv-toolbar">
       <button class="itb-add" onclick="addRow('${ik}','t')"><div class="circ-plus">+</div>Agregar elemento</button>
       <div class="itb-mid"><div class="itb-title">Ingresar elementos del inventario</div><div style="font-size:10px;opacity:.75;margin-top:1px">Cargue el Excel de Presupuesto para autocompletar</div></div>
-      <button class="itb-del" onclick="delRow('${ik}','t')">Eliminar último elemento<div class="circ-minus">−</div></button>
     </div>
     <div class="inv-wrap"><table class="inv-tbl">
-      <thead><tr><th>N°</th><th style="min-width:120px">Elemento</th><th style="min-width:80px">Modelo</th><th style="min-width:80px">Marca</th><th style="min-width:48px">Cant.</th><th style="min-width:100px">Número de serie</th></tr></thead>
+      <thead><tr><th>N°</th><th style="min-width:120px">Elemento</th><th style="min-width:80px">Modelo</th><th style="min-width:80px">Marca</th><th style="min-width:48px">Cant.</th><th style="min-width:100px">Número de serie</th><th style="width:72px"></th></tr></thead>
       <tbody id="tb-${ik}">${rows}</tbody>
     </table></div>`;
 }
@@ -1026,47 +1056,79 @@ function bInvT(p,m){
 function bInvC(p,m){
   const ik=`inv_${p['Código Proyecto']}_datos`;
   const items=S.inv[ik]||[{}];
-  const rows=items.map((it,i)=>`<tr>
-    <td class="nc">${i+1}</td>
-    <td><input data-ik="${ik}" data-r="${i}" data-c="cant" type="number" value="${x(it.cant||'')}" style="max-width:48px"></td>
-    <td><input data-ik="${ik}" data-r="${i}" data-c="tipo" value="${x(it.tipo||'')}"></td>
-    <td><input data-ik="${ik}" data-r="${i}" data-c="dim"  value="${x(it.dim||'')}"></td>
-    <td><input data-ik="${ik}" data-r="${i}" data-c="coo"  value="${x(it.coo||'')}"></td>
-    <td><input data-ik="${ik}" data-r="${i}" data-c="obs"  value="${x(it.obs||'')}"></td>
-  </tr>`).join('');
+  const rows=items.map((it,i)=>invRowC(ik,it,i,items.length)).join('');
   return `<div class="slabel">2.- INVENTARIO:</div>
     <div class="inv-toolbar">
       <button class="itb-add" onclick="addRow('${ik}','c')"><div class="circ-plus">+</div>Agregar elemento</button>
       <div class="itb-mid"><div class="itb-title">Ingresar elementos del inventario</div></div>
-      <button class="itb-del" onclick="delRow('${ik}','c')">Eliminar último elemento<div class="circ-minus">−</div></button>
     </div>
     <div class="inv-wrap"><table class="inv-tbl">
-      <thead><tr><th>N°</th><th style="min-width:48px">Cant.</th><th style="min-width:110px">Tipo Obra</th><th style="min-width:120px">Dimensiones relevantes</th><th style="min-width:140px">Coordenadas inicio y fin de obra</th><th style="min-width:130px">Obs. técnicas (Materiales, otros)</th></tr></thead>
+      <thead><tr><th>N°</th><th style="min-width:48px">Cant.</th><th style="min-width:110px">Tipo Obra</th><th style="min-width:120px">Dimensiones relevantes</th><th style="min-width:140px">Coordenadas inicio y fin de obra</th><th style="min-width:130px">Obs. técnicas (Materiales, otros)</th><th style="width:72px"></th></tr></thead>
       <tbody id="tb-${ik}">${rows}</tbody>
     </table></div>`;
 }
 
 function addRow(ik,tipo){
   const items=S.inv[ik]||[{}];
-
-  items.push({});S.inv[ik]=items;
+  items.push({});S.inv[ik]=items;persist();
   const i=items.length-1;
+  const tb=document.getElementById('tb-'+ik);
   const tr=document.createElement('tr');
-  if(tipo==='t'){
-    tr.innerHTML=`<td class="nc">${i+1}</td><td><input data-ik="${ik}" data-r="${i}" data-c="elem"></td><td><input data-ik="${ik}" data-r="${i}" data-c="mod"></td><td><input data-ik="${ik}" data-r="${i}" data-c="marc"></td><td><input data-ik="${ik}" data-r="${i}" data-c="cant" type="number" style="max-width:48px"></td><td><input data-ik="${ik}" data-r="${i}" data-c="ser"></td>`;
-  } else {
-    tr.innerHTML=`<td class="nc">${i+1}</td><td><input data-ik="${ik}" data-r="${i}" data-c="cant" type="number" style="max-width:48px"></td><td><input data-ik="${ik}" data-r="${i}" data-c="tipo"></td><td><input data-ik="${ik}" data-r="${i}" data-c="dim"></td><td><input data-ik="${ik}" data-r="${i}" data-c="coo"></td><td><input data-ik="${ik}" data-r="${i}" data-c="obs"></td>`;
-  }
-  document.getElementById('tb-'+ik).appendChild(tr);
+  tr.id=`irow-${ik}-${i}`;
+  tr.innerHTML=(tipo==='t'
+    ?`<td class="nc">${i+1}</td><td><input data-ik="${ik}" data-r="${i}" data-c="elem"></td><td><input data-ik="${ik}" data-r="${i}" data-c="mod"></td><td><input data-ik="${ik}" data-r="${i}" data-c="marc"></td><td><input data-ik="${ik}" data-r="${i}" data-c="cant" type="number" style="max-width:48px"></td><td><input data-ik="${ik}" data-r="${i}" data-c="ser"></td>`
+    :`<td class="nc">${i+1}</td><td><input data-ik="${ik}" data-r="${i}" data-c="cant" type="number" style="max-width:48px"></td><td><input data-ik="${ik}" data-r="${i}" data-c="tipo"></td><td><input data-ik="${ik}" data-r="${i}" data-c="dim"></td><td><input data-ik="${ik}" data-r="${i}" data-c="coo"></td><td><input data-ik="${ik}" data-r="${i}" data-c="obs"></td>`)
+    +`<td class="inv-ctrl"><button class="inv-btn-up" onclick="invMove('${ik}','${tipo}',${i},-1)" title="Subir" style="opacity:.3;pointer-events:none">↑</button><button class="inv-btn-down" onclick="invMove('${ik}','${tipo}',${i},1)" title="Bajar" style="opacity:.3;pointer-events:none">↓</button><button class="inv-btn-del" onclick="invDel('${ik}','${tipo}',${i})" title="Eliminar">✕</button></td>`;
+  tb.appendChild(tr);
+  attachInv();
+  // actualizar botón ↓ de la fila anterior
+  invRefreshCtrl(ik,tipo);
+}
+
+function invDel(ik,tipo,idx){
+  saveInvFromDOM(ik);
+  const items=S.inv[ik]||[];
+  if(items.length<=1){toast('Mínimo 1 elemento');return;}
+  items.splice(idx,1);
+  S.inv[ik]=items;persist();
+  invRedraw(ik,tipo);
+}
+
+function invMove(ik,tipo,idx,dir){
+  saveInvFromDOM(ik);
+  const items=S.inv[ik]||[];
+  const target=idx+dir;
+  if(target<0||target>=items.length)return;
+  [items[idx],items[target]]=[items[target],items[idx]];
+  S.inv[ik]=items;persist();
+  invRedraw(ik,tipo);
+}
+
+function saveInvFromDOM(ik){
+  document.querySelectorAll(`[data-ik="${ik}"]`).forEach(inp=>{
+    const r=+inp.dataset.r,c=inp.dataset.c;
+    if(!S.inv[ik])S.inv[ik]=[{}];
+    while(S.inv[ik].length<=r)S.inv[ik].push({});
+    S.inv[ik][r][c]=inp.value;
+  });
+}
+
+function invRedraw(ik,tipo){
+  const tb=document.getElementById('tb-'+ik);
+  if(!tb)return;
+  const items=S.inv[ik]||[];
+  tb.innerHTML=items.map((it,i)=>tipo==='t'?invRowT(ik,it,i,items.length):invRowC(ik,it,i,items.length)).join('');
   attachInv();
 }
 
+function invRefreshCtrl(ik,tipo){
+  invRedraw(ik,tipo);
+}
+
 function delRow(ik,tipo){
-  const items=S.inv[ik]||[{}];
-  if(items.length<=1){toast('Mínimo 1 elemento');return;}
-  items.pop();S.inv[ik]=items;
-  const tb=document.getElementById('tb-'+ik);
-  if(tb?.lastElementChild)tb.removeChild(tb.lastElementChild);
+  // legacy — mantener por compatibilidad pero redirigir a invDel del último
+  const items=S.inv[ik]||[];
+  invDel(ik,tipo,items.length-1);
 }
 
 function attachInv(){
