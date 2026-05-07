@@ -988,7 +988,8 @@ function bIdent(p,isT,rec){
     <div class="frow"><span class="fl">Representante</span><span class="fc">:</span><span class="fi">${ei('_rep','',rec)}</span></div>
     <div class="frow"><span class="fl">Rol</span><span class="fc">:</span><span class="fi">${pi('Rol',p)}</span></div>
     <div class="frow"><span class="fl">Predio</span><span class="fc">:</span><span class="fi">${pi('Predio',p)}</span></div>
-    <div class="frow" style="display:flex;gap:16px"><div style="flex:1"><span class="fl">Comuna</span><span class="fc">:</span><span class="fi" style="max-width:150px">${pi('Comuna',p)}</span></div><div>${gps}</div></div>
+    <div class="frow"><span class="fl">Comuna</span><span class="fc">:</span><span class="fi" style="max-width:200px">${pi('Comuna',p)}</span></div>
+    <div class="frow" style="margin-top:-4px;margin-bottom:0">${gps}</div>
     <div class="frow"><span class="fl">Provincia</span><span class="fc">:</span><span class="fi" style="max-width:200px">${pi('Provincia',p)}</span></div>
     ${civil}
     <div class="frow"><span class="fl">Fecha</span><span class="fc">:</span><span class="fi" style="max-width:200px">${edt('_fecha',rec)}</span></div>
@@ -1202,8 +1203,8 @@ function bInicio(p,isT,rec,rk){
     
     <div class="slabel" style="margin-top:12px">VERIFICACIONES:</div>
     <div style="margin-bottom:10px;display:flex;align-items:flex-start;gap:8px">
-      <select data-f="_verif_nueva" style="background:white;border:1px solid #ccc;padding:4px 6px;border-radius:3px;font-size:12px;min-width:80px;flex-shrink:0">
-        <option value="">— Seleccione —</option>
+      <select data-f="_verif_nueva" style="background:white;border:1px solid #ccc;padding:3px 4px;border-radius:3px;font-size:12px;min-width:52px;flex-shrink:0">
+        <option value="">—</option>
         <option value="Sí" ${rec['_verif_nueva']==='Sí'?'selected':''}>Sí</option>
         <option value="No" ${rec['_verif_nueva']==='No'?'selected':''}>No</option>
       </select>
@@ -1211,8 +1212,8 @@ function bInicio(p,isT,rec,rk){
     </div>
     
     <div style="margin-bottom:10px;display:flex;align-items:flex-start;gap:8px">
-      <select data-f="_verif_docs" style="background:white;border:1px solid #ccc;padding:4px 6px;border-radius:3px;font-size:12px;min-width:80px;flex-shrink:0">
-        <option value="">— Seleccione —</option>
+      <select data-f="_verif_docs" style="background:white;border:1px solid #ccc;padding:3px 4px;border-radius:3px;font-size:12px;min-width:52px;flex-shrink:0">
+        <option value="">—</option>
         <option value="Sí" ${rec['_verif_docs']==='Sí'?'selected':''}>Sí</option>
         <option value="No" ${rec['_verif_docs']==='No'?'selected':''}>No</option>
       </select>
@@ -1220,8 +1221,8 @@ function bInicio(p,isT,rec,rk){
     </div>
     
     <div style="margin-bottom:10px;display:flex;align-items:flex-start;gap:8px">
-      <select data-f="_verif_aprob" style="background:white;border:1px solid #ccc;padding:4px 6px;border-radius:3px;font-size:12px;min-width:80px;flex-shrink:0">
-        <option value="">— Seleccione —</option>
+      <select data-f="_verif_aprob" style="background:white;border:1px solid #ccc;padding:3px 4px;border-radius:3px;font-size:12px;min-width:52px;flex-shrink:0">
+        <option value="">—</option>
         <option value="Sí" ${rec['_verif_aprob']==='Sí'?'selected':''}>Sí</option>
         <option value="No" ${rec['_verif_aprob']==='No'?'selected':''}>No</option>
       </select>
@@ -1229,8 +1230,8 @@ function bInicio(p,isT,rec,rk){
     </div>
     
     <div style="margin-bottom:10px;display:flex;align-items:flex-start;gap:8px">
-      <select data-f="_verif_instr" style="background:white;border:1px solid #ccc;padding:4px 6px;border-radius:3px;font-size:12px;min-width:80px;flex-shrink:0">
-        <option value="">— Seleccione —</option>
+      <select data-f="_verif_instr" style="background:white;border:1px solid #ccc;padding:3px 4px;border-radius:3px;font-size:12px;min-width:52px;flex-shrink:0">
+        <option value="">—</option>
         <option value="Sí" ${rec['_verif_instr']==='Sí'?'selected':''}>Sí</option>
         <option value="No" ${rec['_verif_instr']==='No'?'selected':''}>No</option>
       </select>
