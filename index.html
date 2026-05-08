@@ -995,7 +995,9 @@ function onSepChange(v){
 }
 
 /* ── FIELD HELPERS ─────────────────────────────── */
-function pi(k,p){const v=String(p[k]||'');return v?`<input class="pre" value="${x(v)}" readonly>`:`<input data-f="_pi_${k}" value="" placeholder="—">`;}
+function pi(k,p,rec){const v=String(p[k]||'');if(v)return `<input class="pre" value="${x(v)}" readonly>`;const saved=rec?String(rec[`_pi_${k}`]||''):'';return `<input data-f="_pi_${k}" value="${x(saved)}" placeholder="—">`;}
+// Helper para obtener valor de campo (excel o rec guardado)
+function pv(k,p,rec){return String(p[k]||'')||String(rec&&rec[`_pi_${k}`]||'');}
 function ei(k,ph,rec,t='text'){return `<input type="${t}" data-f="${k}" value="${x(rec[k]||'')}" placeholder="${ph}">`;}
 function edt(k,rec){return `<input type="date" data-f="${k}" value="${rec[k]||td()}">`;}
 function esel(k,rec,opts){return `<select data-f="${k}">${opts.map(o=>`<option value="${o}" ${(rec[k]||opts[0])===o?'selected':''}>${o}</option>`).join('')}</select>`;}
@@ -1033,24 +1035,24 @@ function bIdent(p,isT,rec){
 
   const civil=!isT?`
     <div class="frow"><span class="fl">Localidad</span><span class="fc">:</span><span class="fi">${ei('_localidad','Llenar en terreno',rec)}</span></div>
-    <div class="frow"><span class="fl">Teléfono Contacto</span><span class="fc">:</span><span class="fi">${pi('Teléfono Contacto',p)}</span></div>`:'';
+    <div class="frow"><span class="fl">Teléfono Contacto</span><span class="fc">:</span><span class="fi">${pi('Teléfono Contacto',p,rec)}</span></div>`:'';
 
   return `
     <div class="slabel">1.- IDENTIFICACIÓN:</div>
     <div style="display:flex;gap:12px;align-items:flex-start">
       <div style="flex:1">
-        <div class="frow"><span class="fl">Código del proyecto</span><span class="fc">:</span><span class="fi" style="max-width:200px">${pi('Código Proyecto',p)}</span></div>
-        <div class="frow"><span class="fl">CBRD N°</span><span class="fc">:</span><span class="fi" style="max-width:200px">${pi('CBRD',p)}</span></div>
+        <div class="frow"><span class="fl">Código del proyecto</span><span class="fc">:</span><span class="fi" style="max-width:200px">${pi('Código Proyecto',p,rec)}</span></div>
+        <div class="frow"><span class="fl">CBRD N°</span><span class="fc">:</span><span class="fi" style="max-width:200px">${pi('CBRD',p,rec)}</span></div>
       </div>
       <div style="flex-shrink:0;padding-top:6px">${gps}</div>
     </div>
-    <div class="frow"><span class="fl">Nombre del proyecto</span><span class="fc">:</span><span class="fi">${pi('Nombre proyecto',p)}</span></div>
-    <div class="frow"><span class="fl">Beneficiario</span><span class="fc">:</span><span class="fi">${pi('Nombre',p)}</span></div>
+    <div class="frow"><span class="fl">Nombre del proyecto</span><span class="fc">:</span><span class="fi">${pi('Nombre proyecto',p,rec)}</span></div>
+    <div class="frow"><span class="fl">Beneficiario</span><span class="fc">:</span><span class="fi">${pi('Nombre',p,rec)}</span></div>
     <div class="frow"><span class="fl">Representante</span><span class="fc">:</span><span class="fi">${ei('_rep','',rec)}</span></div>
-    <div class="frow"><span class="fl">Rol</span><span class="fc">:</span><span class="fi">${pi('Rol',p)}</span></div>
-    <div class="frow"><span class="fl">Predio</span><span class="fc">:</span><span class="fi">${pi('Predio',p)}</span></div>
-    <div class="frow"><span class="fl">Comuna</span><span class="fc">:</span><span class="fi" style="max-width:200px">${pi('Comuna',p)}</span></div>
-    <div class="frow"><span class="fl">Provincia</span><span class="fc">:</span><span class="fi" style="max-width:200px">${pi('Provincia',p)}</span></div>
+    <div class="frow"><span class="fl">Rol</span><span class="fc">:</span><span class="fi">${pi('Rol',p,rec)}</span></div>
+    <div class="frow"><span class="fl">Predio</span><span class="fc">:</span><span class="fi">${pi('Predio',p,rec)}</span></div>
+    <div class="frow"><span class="fl">Comuna</span><span class="fc">:</span><span class="fi" style="max-width:200px">${pi('Comuna',p,rec)}</span></div>
+    <div class="frow"><span class="fl">Provincia</span><span class="fc">:</span><span class="fi" style="max-width:200px">${pi('Provincia',p,rec)}</span></div>
     ${civil}
     <div class="frow"><span class="fl">Fecha</span><span class="fc">:</span><span class="fi" style="max-width:200px">${edt('_fecha',rec)}</span></div>`;
 }
@@ -1701,15 +1703,15 @@ function buildPDFHTML(p,m,rec,isT,items,photos,sig){
   // ── TABLA IDENTIFICACIÓN (sin subrayado en valores) ──────────────
   const idT=(extra='')=>`
     <table class="id-t">
-      <tr><td class="lb">Nombre del proyecto</td><td class="sp">:</td><td class="vl">${x(p['Nombre proyecto']||'')}</td></tr>
+      <tr><td class="lb">Nombre del proyecto</td><td class="sp">:</td><td class="vl">${x(pv('Nombre proyecto',p,rec))}</td></tr>
       <tr><td class="lb">Código proyecto</td><td class="sp">:</td><td class="vl">${x(p['Código Proyecto']||'')}</td></tr>
-      <tr><td class="lb">CBRD</td><td class="sp">:</td><td class="vl">${x(p['CBRD']||'')}</td></tr>
-      <tr><td class="lb">Beneficiario/a</td><td class="sp">:</td><td class="vl">${x(p['Nombre']||'')}</td></tr>
+      <tr><td class="lb">CBRD</td><td class="sp">:</td><td class="vl">${x(pv('CBRD',p,rec))}</td></tr>
+      <tr><td class="lb">Beneficiario/a</td><td class="sp">:</td><td class="vl">${x(pv('Nombre',p,rec))}</td></tr>
       <tr><td class="lb">Representante</td><td class="sp">:</td><td class="vl">${x(rec['_rep']||'')}</td></tr>
-      <tr><td class="lb">Rol</td><td class="sp">:</td><td class="vl">${x(p['Rol']||'')}</td></tr>
-      <tr><td class="lb">Predio</td><td class="sp">:</td><td class="vl">${x(p['Predio']||'')}</td></tr>
-      <tr><td class="lb">Provincia</td><td class="sp">:</td><td class="vl">${x(p['Provincia']||'')}</td></tr>
-      <tr><td class="lb">Comuna</td><td class="sp">:</td><td class="vl">${x(p['Comuna']||'')}</td></tr>
+      <tr><td class="lb">Rol</td><td class="sp">:</td><td class="vl">${x(pv('Rol',p,rec))}</td></tr>
+      <tr><td class="lb">Predio</td><td class="sp">:</td><td class="vl">${x(pv('Predio',p,rec))}</td></tr>
+      <tr><td class="lb">Provincia</td><td class="sp">:</td><td class="vl">${x(pv('Provincia',p,rec))}</td></tr>
+      <tr><td class="lb">Comuna</td><td class="sp">:</td><td class="vl">${x(pv('Comuna',p,rec))}</td></tr>
       <tr><td class="lb">Fecha recepción</td><td class="sp">:</td><td class="vl">${x(rec['_fecha']||'')}</td></tr>
       ${extra}
     </table>`;
@@ -1779,7 +1781,7 @@ function buildPDFHTML(p,m,rec,isT,items,photos,sig){
     }
 
     // ── OBRAS CIVILES — formato oficial ────────────────────────────
-    const cbrd=x(p['CBRD']||'');
+    const cbrd=x(pv('CBRD',p,rec));
 
     // Cabecera OC: logo izq + título centrado (sin CBRD/FECHA aquí)
     const hdrOC=`
@@ -1805,7 +1807,7 @@ function buildPDFHTML(p,m,rec,isT,items,photos,sig){
       <table style="border-collapse:collapse;width:100%;font-size:10.5px">
         <tr>
           <td colspan="6" style="border:1px solid #444;padding:6px 8px;min-height:30px">
-            <strong>Proyecto:</strong>&nbsp;&nbsp;${x(p['Nombre proyecto']||'')}
+            <strong>Proyecto:</strong>&nbsp;&nbsp;${x(pv('Nombre proyecto',p,rec))}
           </td>
         </tr>
         <tr>
@@ -1821,18 +1823,18 @@ function buildPDFHTML(p,m,rec,isT,items,photos,sig){
         </tr>
         <tr>
           <td colspan="6" style="border:1px solid #444;padding:6px 8px;min-height:26px">
-            <strong>Beneficiario:</strong>&nbsp;&nbsp;${x(p['Nombre']||'')}
+            <strong>Beneficiario:</strong>&nbsp;&nbsp;${x(pv('Nombre',p,rec))}
           </td>
         </tr>
         <tr>
           <td colspan="6" style="border:1px solid #444;padding:6px 8px;min-height:26px">
-            <strong>Predio :</strong>&nbsp;&nbsp;${x(p['Predio']||'')}
+            <strong>Predio :</strong>&nbsp;&nbsp;${x(pv('Predio',p,rec))}
           </td>
         </tr>
         <tr>
-          <td style="border:1px solid #444;padding:5px 8px;width:20%"><strong>Rol(es) de avalúo:</strong><br>${x(p['Rol']||'')}</td>
-          <td style="border:1px solid #444;padding:5px 8px;width:16%"><strong>Comuna:</strong><br>${x(p['Comuna']||'')}</td>
-          <td style="border:1px solid #444;padding:5px 8px;width:16%"><strong>Provincia:</strong><br>${x(p['Provincia']||'')}</td>
+          <td style="border:1px solid #444;padding:5px 8px;width:20%"><strong>Rol(es) de avalúo:</strong><br>${x(pv('Rol',p,rec))}</td>
+          <td style="border:1px solid #444;padding:5px 8px;width:16%"><strong>Comuna:</strong><br>${x(pv('Comuna',p,rec))}</td>
+          <td style="border:1px solid #444;padding:5px 8px;width:16%"><strong>Provincia:</strong><br>${x(pv('Provincia',p,rec))}</td>
           <td style="border:1px solid #444;padding:5px 8px;width:12%"><strong>Región:</strong><br>Ñuble</td>
           <td colspan="2" style="border:1px solid #444;padding:5px 8px"><strong>Localidad:</strong><br>${x(rec['_localidad']||'')}</td>
         </tr>
@@ -1966,13 +1968,13 @@ function buildPDFHTML(p,m,rec,isT,items,photos,sig){
     const idTInicio=`
       <table class="id-t">
         <tr><td class="lb">Código del proyecto</td><td class="sp">:</td><td class="vl">${x(p['Código Proyecto']||'')}</td></tr>
-        <tr><td class="lb">CBRD N°</td><td class="sp">:</td><td class="vl">${x(p['CBRD']||'')}</td></tr>
-        <tr><td class="lb">Nombre del proyecto</td><td class="sp">:</td><td class="vl">${x(p['Nombre proyecto']||'')}</td></tr>
-        <tr><td class="lb">Beneficiario/a</td><td class="sp">:</td><td class="vl">${x(p['Nombre']||'')}</td></tr>
-        <tr><td class="lb">Predio</td><td class="sp">:</td><td class="vl">${x(p['Predio']||'')}</td></tr>
-        <tr><td class="lb">Rol del predio</td><td class="sp">:</td><td class="vl">${x(p['Rol']||'')}</td></tr>
-        <tr><td class="lb">Provincia</td><td class="sp">:</td><td class="vl">${x(p['Provincia']||'')}</td></tr>
-        <tr><td class="lb">Comuna</td><td class="sp">:</td><td class="vl">${x(p['Comuna']||'')}</td></tr>
+        <tr><td class="lb">CBRD N°</td><td class="sp">:</td><td class="vl">${x(pv('CBRD',p,rec))}</td></tr>
+        <tr><td class="lb">Nombre del proyecto</td><td class="sp">:</td><td class="vl">${x(pv('Nombre proyecto',p,rec))}</td></tr>
+        <tr><td class="lb">Beneficiario/a</td><td class="sp">:</td><td class="vl">${x(pv('Nombre',p,rec))}</td></tr>
+        <tr><td class="lb">Predio</td><td class="sp">:</td><td class="vl">${x(pv('Predio',p,rec))}</td></tr>
+        <tr><td class="lb">Rol del predio</td><td class="sp">:</td><td class="vl">${x(pv('Rol',p,rec))}</td></tr>
+        <tr><td class="lb">Provincia</td><td class="sp">:</td><td class="vl">${x(pv('Provincia',p,rec))}</td></tr>
+        <tr><td class="lb">Comuna</td><td class="sp">:</td><td class="vl">${x(pv('Comuna',p,rec))}</td></tr>
         <tr><td class="lb">Fecha visita</td><td class="sp">:</td><td class="vl">${x(rec['_fecha']||'')}</td></tr>
       </table>`;
 
