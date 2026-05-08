@@ -727,17 +727,22 @@ function restoreUI(){
 function updateStorageInfo(){
   const el=document.getElementById('storage-info');
   if(!el)return;
-  // Estimate current data size
-  try{
-    const json=JSON.stringify(S);
-    const kb=Math.round(json.length*0.75/1024);
-    const mb=(kb/1024).toFixed(1);
-    const photoCount=Object.values(S.ph).reduce((a,arr)=>a+(arr?.length||0),0);
-    el.textContent=`Almacenado: ${mb} MB · ${photoCount} fotos · IndexedDB (capacidad ~500 MB)`;
-    el.style.color=kb>400000?'#c0392b':kb>200000?'#b86800':'#2a6a3a';
-  }catch(e){el.textContent='';}
-  // Refresh admin panel if open
-  const _am=document.getElementById('admin-modal');if(_am&&_am.classList.contains('on'))updateAdmStatus();
+  el.textContent='';
+  setTimeout(()=>{
+    try{
+      const photoCount=Object.values(S.ph).reduce((a,arr)=>a+(arr?.length||0),0);
+      // Estimate size without serializing all base64 photos (fast)
+      const approxKb=Math.round((
+        JSON.stringify({...S,ph:{},files:{}}).length +
+        Object.values(S.ph).flat().reduce((a,p)=>a+(p?.length||0),0) +
+        Object.values(S.files).reduce((a,f)=>a+(f?.data?.length||0),0)
+      )*0.75/1024);
+      const mb=(approxKb/1024).toFixed(1);
+      el.textContent=`${mb} MB · ${photoCount} foto${photoCount!==1?'s':''}`;
+      el.style.color=approxKb>400000?'#c0392b':approxKb>200000?'#b86800':'#2a6a3a';
+    }catch(e){el.textContent='';}
+    const _am=document.getElementById('admin-modal');if(_am&&_am.classList.contains('on'))updateAdmStatus();
+  },50);
 }
 
 /* ── PORTADA ──────────────────────────────────────── */
