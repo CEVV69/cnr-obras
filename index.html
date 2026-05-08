@@ -648,7 +648,7 @@ const MAPS_URI="icon-maps.png";
 const SUPS=['Clara Gatíca Muñoz','Claudio Venegas Villanueva','Daniela Aguayo Aguirre','Igor Borghero Benavides','Javier Ávila Parada','Julio Mendoza Contreras'];
 const ML={inicio:'Inicio de Obras',visita:'Visita de Supervisión',recepcion:'Recepción de Obras'};
 
-let S={allProjects:[],openCodes:[],ci:0,mod:'recepcion',rec:{},inv:{},ph:{},files:{},sigs:{}};
+let S={allProjects:[],openCodes:[],ci:0,mod:'recepcion',rec:{},inv:{},ph:{},files:{},sigs:{},visitas:{}};
 
 /* ── IndexedDB storage (replaces localStorage — 500MB+ capacity) ── */
 let DB=null;
@@ -861,7 +861,7 @@ function renderCurrent(){
   try{
   const total=S.openCodes.length;
   const isT=String(p['Tipo Obra']||'').toLowerCase().includes('tecnif');
-  const rk=`${cod}_${S.mod}`;
+  const rk=S.mod==='visita'?getRKVisita(cod,getVI(cod)):`${cod}_${S.mod}`;
   const rec=S.rec[rk]||{};
 
   // Header
@@ -1318,9 +1318,67 @@ function bInicio(p,isT,rec,rk){
     })()}</div>`
     +bFotos(p,isT,'inicio')+bFirma(rec,rk);
 }
+/* ── VISITAS: índice activo por proyecto ─────────── */
+function getVI(cod){return S.visitas[cod]??0;}
+function setVI(cod,i){S.visitas[cod]=i;persist();}
+function numVisitas(cod){
+  let n=0;
+  // contar todas las claves visita_N que existen
+  for(let i=1;i<=20;i++){
+    if(S.rec[`${cod}_visita_${i}`]!==undefined)n=i;
+    else break;
+  }
+  return Math.max(1,n);
+}
+function getRKVisita(cod,vi){return vi===0?`${cod}_visita_1`:`${cod}_visita_${vi+1}`;}
+
+function addVisita(cod){
+  save();
+  const n=numVisitas(cod)+1;
+  const rk=`${cod}_visita_${n}`;
+  S.rec[rk]={};persist();
+  S.visitas[cod]=n-1;persist();
+  renderCurrent();
+}
+
+function delVisita(cod,vi){
+  const n=numVisitas(cod);
+  if(n<=1){toast('Mínimo 1 visita');return;}
+  if(!confirm(`¿Eliminar Visita ${vi+1}? Se borrarán sus datos y fotos.`))return;
+  const rk=getRKVisita(cod,vi);
+  const pk=`ph_${cod}_visita_${vi+1}`;
+  delete S.rec[rk];delete S.ph[pk];
+  // renumerar las posteriores
+  for(let i=vi+1;i<n;i++){
+    const oldRk=`${cod}_visita_${i+1}`;
+    const newRk=`${cod}_visita_${i}`;
+    const oldPk=`ph_${cod}_visita_${i+1}`;
+    const newPk=`ph_${cod}_visita_${i}`;
+    if(S.rec[oldRk])S.rec[newRk]=S.rec[oldRk];delete S.rec[oldRk];
+    if(S.ph[oldPk])S.ph[newPk]=S.ph[oldPk];delete S.ph[oldPk];
+  }
+  S.visitas[cod]=Math.max(0,vi-1);persist();
+  renderCurrent();
+}
+
 function bVisita(p,isT,rec,rk){
-  const av=rec['_av']||0;
   const cod=p['Código Proyecto'];
+  const vi=getVI(cod);
+  const n=numVisitas(cod);
+  const av=rec['_av']||0;
+
+  // Pestañas
+  let tabs='';
+  for(let i=0;i<n;i++){
+    const active=i===vi;
+    tabs+=`<button onclick="save();setVI('${cod}',${i});renderCurrent()" style="padding:4px 12px;border:none;border-bottom:${active?'2px solid #fff':'2px solid transparent'};background:${active?'rgba(255,255,255,.2)':'transparent'};color:#fff;font-size:12px;font-weight:${active?'700':'400'};cursor:pointer;border-radius:4px 4px 0 0">V${i+1}</button>`;
+  }
+  const tabBar=`<div style="display:flex;align-items:center;gap:2px;margin-bottom:8px;border-bottom:1px solid rgba(255,255,255,.3);padding-bottom:0">
+    ${tabs}
+    <button onclick="addVisita('${cod}')" title="Nueva visita" style="padding:4px 8px;border:none;background:rgba(255,255,255,.15);color:#fff;font-size:14px;font-weight:700;cursor:pointer;border-radius:4px;margin-left:4px">+</button>
+    ${n>1?`<button onclick="delVisita('${cod}',${vi})" title="Eliminar esta visita" style="padding:4px 8px;border:none;background:rgba(220,50,50,.25);color:#fff;font-size:12px;cursor:pointer;border-radius:4px;margin-left:2px">✕ V${vi+1}</button>`:''}
+  </div>`;
+
   const slots=isT?['Presupuesto','Plano','Detalle Fotovoltaico','Otro Antecedente']:['Presupuesto','Plano','Cubicaciones','Otro Antecedente'];
   const archSlots=slots.map(sl=>{
     const fk=`f_${cod}_${sl.replace(/ /g,'_')}`;
@@ -1328,8 +1386,9 @@ function bVisita(p,isT,rec,rk){
     return `<div class="arch-slot" onclick="upFile('${fk}','${sl}',this)"><span class="arch-lbl">${sl}</span><div class="arch-box ${fi?'has':''}">${fi?'📎':''}</div></div>`;
   }).join('');
 
-  return bIdent(p,isT,rec)
-    +`<div class="slabel" style="margin-top:6px">VISITA DE SUPERVISIÓN INTERMEDIA:</div>
+  return `<div style="background:linear-gradient(135deg,#2e3d5c,#4a5e82);border-radius:8px;padding:10px 12px 6px;margin-bottom:12px">${tabBar}</div>`
+    +bIdent(p,isT,rec)
+    +`<div class="slabel" style="margin-top:6px">VISITA DE SUPERVISIÓN V${vi+1}:</div>
     <div class="frow"><span class="fl">% Avance estimado</span><span class="fc">:</span><span class="fi" style="display:flex;align-items:center;gap:8px"><input type="range" data-f="_av" min="0" max="100" step="5" value="${av}" oninput="document.getElementById('avl').textContent=this.value+'%'" style="flex:1"><strong id="avl" style="min-width:36px;color:#2e3d5c">${av}%</strong></span></div>
     <div class="obs-box" style="margin-top:6px">
       <div class="obs-fld"><div class="obs-lbl">Observaciones técnicas</div><textarea data-f="_obs_vis" rows="4">${x(rec['_obs_vis']||'')}</textarea></div>
@@ -1339,7 +1398,7 @@ function bVisita(p,isT,rec,rk){
     <div class="slabel" style="margin-top:12px">ANTECEDENTES Y DOCUMENTOS:</div>
     <div class="arch-row" style="justify-content:center">${archSlots}</div>`
     +(isT?bInvT(p,'visita'):bInvC(p,'visita'))
-    +bFotos(p,isT,'visita')+bFirma(rec,rk);
+    +bFotos(p,isT,`visita_${vi+1}`)+bFirma(rec,rk);
 }
 
 /* ── FILES ───────────────────────────────────────── */
@@ -1465,7 +1524,9 @@ function closeInfo(){document.getElementById('info-modal').classList.remove('on'
 /* ── SAVE ────────────────────────────────────────── */
 function save(){
   if(!S.openCodes.length)return;
-  const cod=S.openCodes[S.ci],m=S.mod,rk=`${cod}_${m}`,rec={};
+  const cod=S.openCodes[S.ci],m=S.mod;
+  const rk=m==='visita'?getRKVisita(cod,getVI(cod)):`${cod}_${m}`;
+  const rec={};
   document.querySelectorAll('[data-f]').forEach(el=>{rec[el.dataset.f]=el.value;});
   rec['_sep']=document.getElementById('sep-sel')?.value||'No';
   S.rec[rk]=rec;persist();toast('💾 Guardado');
@@ -1863,7 +1924,7 @@ function buildPDFHTML(p,m,rec,isT,items,photos,sig){
       ${hdr(`ACTA DE SUPERVISIÓN — PROYECTO ${x(p['Código Proyecto']||'')}`, 'LEY 18.450')}
       <div class="sec sec-id">1.- IDENTIFICACIÓN:</div>
       ${idT()}
-      <div class="sec sec-inv">VISITA DE SUPERVISIÓN INTERMEDIA:</div>
+      <div class="sec sec-inv">VISITA DE SUPERVISIÓN N° ${(d.vi||0)+1}:</div>
       <table class="id-t">
         <tr><td class="lb">Fecha visita</td><td class="sp">:</td><td class="vl">${x(rec['_f_vis']||'')}</td></tr>
         <tr><td class="lb">% Avance estimado</td><td class="sp">:</td><td class="vl">${x(rec['_av']||'0')}%</td></tr>
@@ -1885,19 +1946,24 @@ function buildPDFHTML(p,m,rec,isT,items,photos,sig){
 function getPDFData(){
   const cod=S.openCodes[S.ci];if(!cod)return null;
   const p=S.allProjects.find(r=>r['Código Proyecto']===cod);if(!p)return null;
-  const m=S.mod,rk=`${cod}_${m}`,rec=S.rec[rk]||{};
+  const m=S.mod;
+  const vi=m==='visita'?getVI(cod):0;
+  const rk=m==='visita'?getRKVisita(cod,vi):`${cod}_${m}`;
+  const rec=S.rec[rk]||{};
   const isT=String(p['Tipo Obra']||'').toLowerCase().includes('tecnif');
   const ik=`inv_${cod}_datos`,items=S.inv[ik]||[];
-  const photos=S.ph[`ph_${cod}_${m}`]||[];
+  const phKey=m==='visita'?`ph_${cod}_visita_${vi+1}`:`ph_${cod}_${m}`;
+  const photos=S.ph[phKey]||[];
   const sig=S.sigs[rk]||'';
-  return{p,m,rec,isT,items,photos,sig,cod};
+  return{p,m,rec,isT,items,photos,sig,cod,vi};
 }
 
 function doPDF(print){
   save();
   const d=getPDFData();if(!d){toast('Abra un proyecto');return;}
   const html=buildPDFHTML(d.p,d.m,d.rec,d.isT,d.items,d.photos,d.sig);
-  const opt={margin:0,filename:`Acta_${d.cod}_${ML[d.m].replace(/ /g,'_')}.pdf`,image:{type:'jpeg',quality:0.98},html2canvas:{scale:2,useCORS:true},jsPDF:{orientation:'portrait',unit:'mm',format:'letter'}};
+  const viLabel=d.m==='visita'?`_V${(d.vi||0)+1}`:'';
+  const opt={margin:0,filename:`Acta_${d.cod}_${ML[d.m].replace(/ /g,'_')}${viLabel}.pdf`,image:{type:'jpeg',quality:0.98},html2canvas:{scale:2,useCORS:true},jsPDF:{orientation:'portrait',unit:'mm',format:'letter'}};
   if(print){
     html2pdf().set(opt).from(html).output('datauristring').then(pdf=>{
       const w=window.open(pdf);
