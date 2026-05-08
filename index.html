@@ -1667,10 +1667,9 @@ function buildPDFHTML(p,m,rec,isT,items,photos,sig){
     .sig-ln{border-top:1px solid #111;width:220px;margin:4px auto 0}
     .sig-nm{font-size:11px;font-weight:700;margin-top:6px}
     .sig-cg{font-size:10px;color:#444;margin-top:3px;line-height:1.5}
-    /* Fotos — recorte via background-image, sin deformación */
-    .fg{width:100%;border-collapse:collapse;margin-top:12px}
-    .fg td,.fg-cell{padding:4px;vertical-align:top;width:33.33%}
-    .fg-img{width:100%;height:160px;border:1px solid #ccc;background-size:cover;background-position:center center;background-repeat:no-repeat}
+    // Fotos — img tag compatible iOS/WebKit (no background-image)
+    .fg-img{width:100%;height:160px;border:1px solid #ccc;overflow:hidden;display:block}
+    .fg-img img{width:100%;height:100%;object-fit:cover;display:block}
     /* Tabla identificación Obras Civiles — con bordes */
     .oc-hdr{border-collapse:collapse;width:100%;font-size:11px;margin-bottom:0}
     .oc-hdr td{border:1px solid #444;padding:4px 7px;vertical-align:top;line-height:1.4}
@@ -1740,7 +1739,7 @@ function buildPDFHTML(p,m,rec,isT,items,photos,sig){
     for(let i=0;i<photos.length;i+=fotosPerPage) chunks.push(photos.slice(i,i+fotosPerPage));
     chunks.forEach((chunk,ci)=>{
       const isLastPage=ci===chunks.length-1;
-    const cells=chunk.map(ph=>`<td><div class="fg-img" style="background-image:url('${ph}')"></div></td>`);
+    const cells=chunk.map(ph=>`<td><div class="fg-img"><img src="${ph}" style="width:100%;height:160px;object-fit:cover;display:block"></div></td>`);
       let rows='';for(let i=0;i<cells.length;i+=3) rows+=`<tr>${cells.slice(i,i+3).join('')}</tr>`;
       const cls=isLastPage?'page-last':'page';
       fotoPages+=`<div class="${cls}">
@@ -1887,7 +1886,7 @@ function buildPDFHTML(p,m,rec,isT,items,photos,sig){
       for(let i=0;i<photos.length;i+=fpp) chunks.push(photos.slice(i,i+fpp));
       chunks.forEach((chunk,ci)=>{
         const isLast=ci===chunks.length-1;
-        const cells=chunk.map(ph=>`<td style="padding:6px;width:50%"><div style="width:100%;height:210px;border:1px solid #999;background-image:url('${ph}');background-size:cover;background-position:center"></div></td>`);
+        const cells=chunk.map(ph=>`<td style="padding:6px;width:50%"><div style="width:100%;height:210px;border:1px solid #999;overflow:hidden"><img src="${ph}" style="width:100%;height:210px;object-fit:cover;display:block"></div></td>`);
         let rows='';for(let i=0;i<cells.length;i+=2) rows+=`<tr>${cells.slice(i,i+2).join('')}</tr>`;
         fotoPagesOC+=`<div class="${isLast?'page-last':'page'}">
           <div style="text-align:center;margin-bottom:16px">
@@ -1953,7 +1952,7 @@ function buildPDFHTML(p,m,rec,isT,items,photos,sig){
       for(let i=0;i<photos.length;i+=fpp) chunks.push(photos.slice(i,i+fpp));
       chunks.forEach((chunk,ci)=>{
         const isLast=ci===chunks.length-1;
-        const cells=chunk.map(ph=>`<td class="fg-cell"><div class="fg-img" style="background-image:url('${ph}')"></div></td>`);
+        const cells=chunk.map(ph=>`<td class="fg-cell"><div class="fg-img"><img src="${ph}" style="width:100%;height:160px;object-fit:cover;display:block"></div></td>`);
         let rows='';for(let i=0;i<cells.length;i+=3) rows+=`<tr>${cells.slice(i,i+3).join('')}</tr>`;
         fotoPagesInicio+=`<div class="${isLast?'page-last':'page'}">
           ${hdrFoto('REGISTRO FOTOGRÁFICO',`CONCURSO ${concurso} · REGIÓN DE ÑUBLE, LEY 18.450`)}
@@ -2031,7 +2030,7 @@ function buildPDFHTML(p,m,rec,isT,items,photos,sig){
       const isLast=ci===chunks.length-1;
       const cellW=isT?'33.33%':'50%';
       const cellH=isT?'160px':'210px';
-      const cells=chunk.map(ph=>`<td style="padding:4px;width:${cellW}"><div style="width:100%;height:${cellH};border:1px solid #ccc;background-image:url('${ph}');background-size:cover;background-position:center"></div></td>`);
+      const cells=chunk.map(ph=>`<td style="padding:4px;width:${cellW}"><div style="width:100%;height:${cellH};border:1px solid #ccc;overflow:hidden"><img src="${ph}" style="width:100%;height:${cellH};object-fit:cover;display:block"></div></td>`);
       let rows='';for(let i=0;i<cells.length;i+=cols) rows+=`<tr>${cells.slice(i,i+cols).join('')}</tr>`;
       fotoPagesVisita+=`<div class="${isLast?'page-last':'page'}">
         ${hdrFoto('REGISTRO FOTOGRÁFICO',`CONCURSO ${concurso} · REGIÓN DE ÑUBLE, LEY 18.450`)}
@@ -2082,30 +2081,69 @@ function getPDFData(){
 function doPDF(print){
   save();
   const d=getPDFData();if(!d){toast('Abra un proyecto');return;}
-  const html=buildPDFHTML(d.p,d.m,d.rec,d.isT,d.items,d.photos,d.sig);
-  const viLabel=d.m==='visita'?`_V${(d.vi||0)+1}`:'';
-  const fname=`Acta_${d.cod}_${ML[d.m].replace(/ /g,'_')}${viLabel}.pdf`;
-  const opt={margin:0,filename:fname,image:{type:'jpeg',quality:0.98},html2canvas:{scale:2,useCORS:true},jsPDF:{orientation:'portrait',unit:'mm',format:'letter'}};
-  toast('⏳ Generando PDF...',3000);
-  if(print){
-    html2pdf().set(opt).from(html).output('datauristring').then(pdf=>{
-      const w=window.open('','_blank');
-      if(w){w.document.write(`<iframe src="${pdf}" style="width:100%;height:100%;border:none"></iframe>`);setTimeout(()=>w.print(),1200);}
-      else{toast('⚠️ Permita ventanas emergentes para imprimir');}
-    });
-  } else {
-    html2pdf().set(opt).from(html).output('blob').then(blob=>{
-      const url=URL.createObjectURL(blob);
-      const a=document.createElement('a');
-      a.href=url;a.download=fname;a.target='_blank';
-      document.body.appendChild(a);a.click();
-      setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url);},2000);
-      toast('✅ PDF descargado');
-    }).catch(err=>{
-      console.error('PDF error:',err);
-      toast('⚠️ Error al generar PDF');
-    });
-  }
+
+  // Pre-procesar fotos: recortar a 4:3 y comprimir (evita crash iOS/WebKit)
+  const compressPhotos=(photos,targetW=800,targetH=600)=>{
+    return Promise.all(photos.map(b64=>new Promise(res=>{
+      if(!b64){res('');return;}
+      const img=new Image();
+      img.onload=()=>{
+        try{
+          const cv=document.createElement('canvas');
+          cv.width=targetW;cv.height=targetH;
+          const ctx=cv.getContext('2d');
+          // Recorte centrado al ratio 4:3
+          const srcRatio=img.width/img.height;
+          const dstRatio=targetW/targetH;
+          let sx=0,sy=0,sw=img.width,sh=img.height;
+          if(srcRatio>dstRatio){sw=Math.round(img.height*dstRatio);sx=Math.round((img.width-sw)/2);}
+          else{sh=Math.round(img.width/dstRatio);sy=Math.round((img.height-sh)/2);}
+          ctx.drawImage(img,sx,sy,sw,sh,0,0,targetW,targetH);
+          res(cv.toDataURL('image/jpeg',0.75));
+        }catch(e){res(b64);}
+      };
+      img.onerror=()=>res(b64);
+      img.src=b64;
+    })));
+  };
+
+  toast('⏳ Generando PDF...',6000);
+
+  // Comprimir todas las fotos del rec
+  const allPhotos=d.photos||[];
+  compressPhotos(allPhotos).then(compressed=>{
+    // Reemplazar fotos en d con versiones comprimidas
+    const dComp={...d,photos:compressed};
+    const html=buildPDFHTML(dComp.p,dComp.m,dComp.rec,dComp.isT,dComp.items,dComp.photos,dComp.sig);
+    const viLabel=d.m==='visita'?`_V${(d.vi||0)+1}`:'';
+    const fname=`Acta_${d.cod}_${ML[d.m].replace(/ /g,'_')}${viLabel}.pdf`;
+    // iOS Safari necesita scale más bajo
+    const isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent);
+    const scale=isIOS?1:1.5;
+    const opt={
+      margin:0,
+      filename:fname,
+      image:{type:'jpeg',quality:0.85},
+      html2canvas:{scale,useCORS:true,allowTaint:true,logging:false,imageTimeout:10000},
+      jsPDF:{orientation:'portrait',unit:'mm',format:'letter'}
+    };
+    if(print){
+      html2pdf().set(opt).from(html).output('datauristring').then(pdf=>{
+        const w=window.open('','_blank');
+        if(w){w.document.write(`<iframe src="${pdf}" style="width:100%;height:100%;border:none"></iframe>`);setTimeout(()=>w.print(),1200);}
+        else{toast('⚠️ Permita ventanas emergentes para imprimir');}
+      }).catch(err=>{console.error(err);toast('⚠️ Error al generar PDF');});
+    } else {
+      html2pdf().set(opt).from(html).output('blob').then(blob=>{
+        const url=URL.createObjectURL(blob);
+        const a=document.createElement('a');
+        a.href=url;a.download=fname;a.target='_blank';
+        document.body.appendChild(a);a.click();
+        setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url);},3000);
+        toast('✅ PDF descargado');
+      }).catch(err=>{console.error(err);toast('⚠️ Error al generar PDF');});
+    }
+  });
 }
 
 /* ── EMAIL: genera PDF y abre correo ─── */

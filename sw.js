@@ -1,8 +1,7 @@
 /* CNR Ñuble PWA — Service Worker
-   Version: 202604292221
-   Network-first for HTML, cache-first for static assets.
+   Version: 202605080001
 */
-const CACHE = 'cnr-202604292221';
+const CACHE = 'cnr-202605082148';
 const ASSETS = [
   './',
   './index.html',
@@ -12,7 +11,13 @@ const ASSETS = [
   './icon-maps.png',
   './apple-touch-icon.png',
   'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',
+  'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js',
+  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',
+  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js',
 ];
+
+// Archivos que siempre deben ir a red primero (datos dinámicos)
+const NETWORK_FIRST = ['proyectos.json'];
 
 self.addEventListener('install', e => {
   self.skipWaiting();
@@ -28,22 +33,34 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
-  const u = new URL(e.request.url);
-  const isHTML = u.pathname.endsWith('.html') || u.pathname === '/' || u.pathname.endsWith('/');
-  if (isHTML) {
-    // Always fetch fresh HTML from network
+  const url = e.request.url;
+
+  // Network-first para proyectos.json
+  if (NETWORK_FIRST.some(f => url.includes(f))) {
     e.respondWith(
-      fetch(e.request, {cache: 'no-store'})
-        .then(r => { caches.open(CACHE).then(c => c.put(e.request, r.clone())); return r; })
-        .catch(() => caches.match(e.request))
+      fetch(e.request).then(res => {
+        const clone = res.clone();
+        caches.open(CACHE).then(c => c.put(e.request, clone));
+        return res;
+      }).catch(() => caches.match(e.request))
     );
-  } else {
-    e.respondWith(
-      caches.match(e.request)
-        .then(r => r || fetch(e.request)
-          .then(nr => { caches.open(CACHE).then(c => c.put(e.request, nr.clone())); return nr; }))
-    );
+    return;
   }
+
+  // Cache-first para todo lo demás
+  e.respondWith(
+    caches.match(e.request).then(cached => {
+      if (cached) return cached;
+      return fetch(e.request).then(response => {
+        if (response && response.status === 200 && response.type !== 'opaque') {
+          caches.open(CACHE).then(c => c.put(e.request, response.clone()));
+        }
+        return response;
+      }).catch(() => {
+        if (e.request.destination === 'document') return caches.match('./index.html');
+      });
+    })
+  );
 });
 
 self.addEventListener('message', e => {
