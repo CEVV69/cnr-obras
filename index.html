@@ -532,6 +532,9 @@ body{background:#b8bec8}
 
   </div><!-- #main -->
 
+  <!-- Storage info — visible solo en portada -->
+  <div id="storage-info" style="display:none;text-align:center;font-size:11px;color:#7a9cc0;padding:4px 0 2px;background:#f5f7fa"></div>
+
   <!-- BOTTOM NAV -->
   <div id="bottomnav">
     <button class="bn-arrow" id="nav-prev" onclick="navRec(-1)" disabled>◀</button>
@@ -741,7 +744,24 @@ function updateStorageInfo(){
   },50);
 }
 
-/* ── PORTADA ──────────────────────────────────────── */
+function updateStorageInfo(){
+  const el=document.getElementById('storage-info');
+  if(!el)return;
+  setTimeout(()=>{
+    try{
+      const photoCount=Object.values(S.ph).reduce((a,arr)=>a+(arr?.length||0),0);
+      const approxKb=Math.round((
+        JSON.stringify({...S,ph:{},files:{}}).length+
+        Object.values(S.ph).flat().reduce((a,p)=>a+(p?.length||0),0)+
+        Object.values(S.files).reduce((a,f)=>a+(f?.data?.length||0),0)
+      )*0.75/1024);
+      const mb=(approxKb/1024).toFixed(1);
+      el.textContent=`Almacenado: ${mb} MB · ${photoCount} foto${photoCount!==1?'s':''}`;
+    }catch(e){el.textContent='';}
+  },80);
+}
+
+
 function showPortada(){
   const el1=document.getElementById('screen-portada');
   const el2=document.getElementById('screen-form');
@@ -761,7 +781,10 @@ function showPortada(){
   document.getElementById('btn-preview').style.display='none';
   document.getElementById('btn-print').style.display='none';
   document.getElementById('btn-config-header').style.display='block';
+  const si=document.getElementById('storage-info');
+  if(si) si.style.display='block';
   renderPortadaProyectos();
+  updateStorageInfo();
 }
 
 function renderPortadaProyectos(){
@@ -952,6 +975,7 @@ function renderCurrent(){
   // Screens
   document.getElementById('screen-portada').style.display='none';
   document.getElementById('screen-form').style.display='block';
+  const si=document.getElementById('storage-info');if(si)si.style.display='none';
 
   // Build form
   let html='';
