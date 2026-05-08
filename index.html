@@ -1918,24 +1918,26 @@ function buildPDFHTML(p,m,rec,isT,items,photos,sig){
   }
 
   // ══ VISITA ═══════════════════════════════════════════════════════
+  // Número de visita viene en rec['_vi'] que guardamos al llamar
+  const viNum=rec['_viNum']||1;
   const pg1cls=photos.length?'page':'page-last';
+  const obsVisita=(rec['_obs_vis']||rec['_acuerd'])?`
+    <div style="margin-top:10px;font-size:10.5px">
+      ${rec['_obs_vis']?`<div style="margin-bottom:6px"><div style="font-weight:700;font-size:9.5px;text-transform:uppercase;color:#555;margin-bottom:2px">Observaciones técnicas</div><div>${x(rec['_obs_vis'])}</div></div>`:''}
+      ${rec['_acuerd']?`<div><div style="font-weight:700;font-size:9.5px;text-transform:uppercase;color:#555;margin-bottom:2px">Acuerdos y compromisos</div><div>${x(rec['_acuerd'])}</div></div>`:''}
+    </div>`:'';
   return docOpen+`
     <div class="${pg1cls}">
       ${hdr(`ACTA DE SUPERVISIÓN — PROYECTO ${x(p['Código Proyecto']||'')}`, 'LEY 18.450')}
       <div class="sec sec-id">1.- IDENTIFICACIÓN:</div>
       ${idT()}
-      <div class="sec sec-inv">VISITA DE SUPERVISIÓN N° ${(d.vi||0)+1}:</div>
+      <div class="sec sec-inv">2.- VISITA DE SUPERVISIÓN N° ${viNum}:</div>
       <table class="id-t">
-        <tr><td class="lb">Fecha visita</td><td class="sp">:</td><td class="vl">${x(rec['_f_vis']||'')}</td></tr>
+        <tr><td class="lb">Fecha visita</td><td class="sp">:</td><td class="vl">${x(rec['_fecha']||'')}</td></tr>
         <tr><td class="lb">% Avance estimado</td><td class="sp">:</td><td class="vl">${x(rec['_av']||'0')}%</td></tr>
-        <tr><td class="lb">Etapa constructiva</td><td class="sp">:</td><td class="vl">${x(rec['_etapa']||'')}</td></tr>
-        <tr><td class="lb">Conformidad</td><td class="sp">:</td><td class="vl">${x(rec['_conf']||'')}</td></tr>
-        <tr><td class="lb">Plazo reparos</td><td class="sp">:</td><td class="vl">${x(rec['_plaz_rep']||'')} días</td></tr>
+        ${rec['_prox']?`<tr><td class="lb">Próxima visita</td><td class="sp">:</td><td class="vl">${x(rec['_prox'])}</td></tr>`:''}
       </table>
-      <div class="obs" style="margin-top:8px">
-        <div class="ob-r"><div class="ob-l">Observaciones técnicas</div><div class="ob-v">${x(rec['_obs_vis']||'')}</div></div>
-        <div class="ob-r"><div class="ob-l">Acuerdos y compromisos</div><div class="ob-v">${x(rec['_acuerd']||'')}</div></div>
-      </div>
+      ${obsVisita}
       ${items.length?`<div class="sec sec-inv">INVENTARIO:</div>${invTable}`:''}
       ${sigPag1}
     </div>
@@ -1955,7 +1957,8 @@ function getPDFData(){
   const phKey=m==='visita'?`ph_${cod}_visita_${vi+1}`:`ph_${cod}_${m}`;
   const photos=S.ph[phKey]||[];
   const sig=S.sigs[rk]||'';
-  return{p,m,rec,isT,items,photos,sig,cod,vi};
+  const recWithMeta={...rec,_viNum:vi+1};
+  return{p,m,rec:recWithMeta,isT,items,photos,sig,cod,vi};
 }
 
 function doPDF(print){
