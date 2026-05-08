@@ -1320,18 +1320,24 @@ function bInicio(p,isT,rec,rk){
 }
 function bVisita(p,isT,rec,rk){
   const av=rec['_av']||0;
+  const cod=p['Código Proyecto'];
+  const slots=isT?['Presupuesto','Plano','Detalle Fotovoltaico','Otro Antecedente']:['Presupuesto','Plano','Cubicaciones','Otro Antecedente'];
+  const archSlots=slots.map(sl=>{
+    const fk=`f_${cod}_${sl.replace(/ /g,'_')}`;
+    const fi=S.files[fk];
+    return `<div class="arch-slot" onclick="upFile('${fk}','${sl}',this)"><span class="arch-lbl">${sl}</span><div class="arch-box ${fi?'has':''}">${fi?'📎':''}</div></div>`;
+  }).join('');
+
   return bIdent(p,isT,rec)
     +`<div class="slabel" style="margin-top:6px">VISITA DE SUPERVISIÓN INTERMEDIA:</div>
-    <div class="frow"><span class="fl">Fecha de visita</span><span class="fc">:</span><span class="fi" style="max-width:200px">${edt('_f_vis',rec)}</span></div>
     <div class="frow"><span class="fl">% Avance estimado</span><span class="fc">:</span><span class="fi" style="display:flex;align-items:center;gap:8px"><input type="range" data-f="_av" min="0" max="100" step="5" value="${av}" oninput="document.getElementById('avl').textContent=this.value+'%'" style="flex:1"><strong id="avl" style="min-width:36px;color:#2e3d5c">${av}%</strong></span></div>
-    <div class="frow"><span class="fl">Etapa constructiva</span><span class="fc">:</span><span class="fi">${ei('_etapa','',rec)}</span></div>
-    <div class="frow"><span class="fl">Conformidad con proyecto</span><span class="fc">:</span><span class="fi" style="max-width:200px">${esel('_conf',rec,['— Seleccione —','Conforme','Con reparos','No conforme'])}</span></div>
-    <div class="frow"><span class="fl">Plazo reparos (días hábiles)</span><span class="fc">:</span><span class="fi" style="max-width:100px">${ei('_plaz_rep','0',rec,'number')}</span></div>
     <div class="obs-box" style="margin-top:6px">
       <div class="obs-fld"><div class="obs-lbl">Observaciones técnicas</div><textarea data-f="_obs_vis" rows="4">${x(rec['_obs_vis']||'')}</textarea></div>
       <div class="obs-fld"><div class="obs-lbl">Acuerdos y compromisos</div><textarea data-f="_acuerd" rows="3">${x(rec['_acuerd']||'')}</textarea></div>
     </div>
-    <div class="frow"><span class="fl">Próxima visita</span><span class="fc">:</span><span class="fi" style="max-width:155px">${edt('_prox',rec)}</span></div>`
+    <div class="frow"><span class="fl">Próxima visita</span><span class="fc">:</span><span class="fi" style="max-width:155px">${edt('_prox',rec)}</span></div>
+    <div class="slabel" style="margin-top:12px">ANTECEDENTES Y DOCUMENTOS:</div>
+    <div class="arch-row" style="justify-content:center">${archSlots}</div>`
     +(isT?bInvT(p,'visita'):bInvC(p,'visita'))
     +bFotos(p,isT,'visita')+bFirma(rec,rk);
 }
