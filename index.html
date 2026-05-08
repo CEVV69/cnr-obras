@@ -524,13 +524,7 @@ body{background:#b8bec8}
       <div id="storage-info" style="font-size:11px;color:#667;text-align:center;width:100%;max-width:420px">
         Cargando información de almacenamiento...
       </div>
-      <div class="portada-hint">
-        <strong>Flujo PC → Tablet → PC:</strong><br>
-        1. PC: prepare datos → <strong>Exportar datos</strong> → envíe el .json al tablet<br>
-        2. Tablet: <strong>Importar datos</strong> → tome fotos y complete → <strong>Exportar datos</strong><br>
-        3. PC: <strong>Importar datos</strong> → imprima o envíe el acta<br><br>
-        Use ➕ en la barra inferior para abrir un proyecto.
-      </div>
+      <div id="portada-proyectos" style="width:100%;max-width:520px"></div>
     </div>
     <!-- ═══ END PORTADA ═══ -->
 
@@ -726,8 +720,7 @@ function restoreUI(){
     const _z=document.getElementById('adm-xl-zone');if(_z)_z.classList.add('loaded');
     const _s=document.getElementById('xl-sub');if(_s)_s.textContent=`✅ ${S.allProjects.length} proyectos cargados`;
   }
-  if(S.openCodes.length) renderCurrent();
-  else showPortada();
+  showPortada();
   updateStorageInfo();
 }
 
@@ -767,9 +760,42 @@ function showPortada(){
   document.getElementById('btn-preview').style.display='none';
   document.getElementById('btn-print').style.display='none';
   document.getElementById('btn-config-header').style.display='block';
+  renderPortadaProyectos();
 }
 
-function goPortada(){
+function renderPortadaProyectos(){
+  const el=document.getElementById('portada-proyectos');
+  if(!el)return;
+  if(!S.openCodes.length){
+    el.innerHTML='';return;
+  }
+  const rows=S.openCodes.map((cod,i)=>{
+    const p=S.allProjects.find(r=>r['Código Proyecto']===cod)||{};
+    const nombre=p['Nombre proyecto']||'—';
+    const tipo=String(p['Tipo Obra']||'').toLowerCase().includes('tecnif')?'Tecnif.':'Civil';
+    const activo=i===S.ci;
+    return `<tr style="cursor:pointer;background:${activo?'#e8eef8':'#fff'}" onclick="S.ci=${i};S.mod='recepcion';renderCurrent()">
+      <td style="padding:6px 8px;font-size:11px;font-weight:700;color:#2e3d5c;white-space:nowrap">${cod}</td>
+      <td style="padding:6px 8px;font-size:11px;color:#333;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${nombre}</td>
+      <td style="padding:6px 8px;font-size:10px;color:#667;white-space:nowrap;text-align:center">${tipo}</td>
+    </tr>`;
+  }).join('');
+  el.innerHTML=`
+    <div style="font-size:12px;font-weight:700;color:#2e3d5c;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;text-align:center">Proyectos en la app</div>
+    <table style="width:100%;border-collapse:collapse;border:1px solid #d0d8e8;border-radius:6px;overflow:hidden;font-family:inherit">
+      <thead>
+        <tr style="background:#2e3d5c;color:#fff">
+          <th style="padding:6px 8px;font-size:10.5px;font-weight:700;text-align:left">Código</th>
+          <th style="padding:6px 8px;font-size:10.5px;font-weight:700;text-align:left">Proyecto</th>
+          <th style="padding:6px 8px;font-size:10.5px;font-weight:700;text-align:center">Tipo</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div style="font-size:10px;color:#999;text-align:center;margin-top:4px">Toca una fila para abrir el proyecto</div>`;
+}
+
+
   save();
   // Hide header title — only shown in form screens
   const hdEl=document.getElementById('hdr-title');
@@ -944,7 +970,7 @@ function onSepChange(v){
 }
 
 /* ── FIELD HELPERS ─────────────────────────────── */
-function pi(k,p){return `<input class="pre" value="${x(String(p[k]||''))}" readonly>`;}
+function pi(k,p){const v=String(p[k]||'');return v?`<input class="pre" value="${x(v)}" readonly>`:`<input data-f="_pi_${k}" value="" placeholder="—">`;}
 function ei(k,ph,rec,t='text'){return `<input type="${t}" data-f="${k}" value="${x(rec[k]||'')}" placeholder="${ph}">`;}
 function edt(k,rec){return `<input type="date" data-f="${k}" value="${rec[k]||td()}">`;}
 function esel(k,rec,opts){return `<select data-f="${k}">${opts.map(o=>`<option value="${o}" ${(rec[k]||opts[0])===o?'selected':''}>${o}</option>`).join('')}</select>`;}
