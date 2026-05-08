@@ -521,9 +521,6 @@ body{background:#b8bec8}
           </span>
         </button>
       </div>
-      <div id="storage-info" style="font-size:11px;color:#667;text-align:center;width:100%;max-width:420px">
-        Cargando información de almacenamiento...
-      </div>
       <div id="portada-proyectos" style="width:100%;max-width:520px"></div>
     </div>
     <!-- ═══ END PORTADA ═══ -->
@@ -721,7 +718,6 @@ function restoreUI(){
     const _s=document.getElementById('xl-sub');if(_s)_s.textContent=`✅ ${S.allProjects.length} proyectos cargados`;
   }
   showPortada();
-  updateStorageInfo();
 }
 
 function updateStorageInfo(){
@@ -3055,51 +3051,7 @@ function generarProyectosJSON(){
    - If remote is newer → update automatically + notify user
    - If user has no projects at all → load silently
    ─────────────────────────────────────────────────────────── */
-async function fetchProyectosRemoto(){
-  if(!location.protocol.startsWith('http')) return;
-  try{
-    const res=await fetch('./proyectos.json',{cache:'no-cache'});
-    if(!res.ok) return; // file doesn't exist yet in repo — that's fine
-    const data=await res.json();
-    if(!data.projects||!data.projects.length) return;
 
-    const remoteTS  = data.generated||'';
-    const localTS   = S.proyectosTS||'';
-    const hasLocal  = S.allProjects.length>0;
-    const isNewer   = !localTS||(remoteTS>localTS);
-
-    if(!hasLocal){
-      // First run: load silently
-      S.allProjects  = data.projects;
-      S.proyectosTS  = remoteTS;
-      persist();
-      updateAdmStatus();
-      updateStorageInfo();
-      const sub=document.getElementById('xl-sub');
-      const zone=document.getElementById('adm-xl-zone');
-      if(sub) sub.textContent=`✅ ${data.projects.length} proyectos cargados`;
-      if(zone) zone.classList.add('loaded');
-      toast(`✅ ${data.projects.length} proyectos cargados automáticamente`,3000);
-
-    } else if(isNewer){
-      // Newer version available → auto-update without asking
-      const prev=S.allProjects.length;
-      S.allProjects  = data.projects;
-      S.proyectosTS  = remoteTS;
-      persist();
-      updateAdmStatus();
-      updateStorageInfo();
-      const sub=document.getElementById('xl-sub');
-      if(sub) sub.textContent=`✅ ${data.projects.length} proyectos cargados`;
-      if(data.projects.length!==prev){
-        toast(`🔄 Lista de proyectos actualizada: ${data.projects.length} proyectos`,4000);
-      }
-    }
-    // If same version → do nothing (user's local Excel is current)
-  }catch(e){
-    // Silently ignore network errors — app works offline
-  }
-}
 
 
 
