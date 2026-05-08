@@ -892,11 +892,26 @@ function doSearch(){
 
 function removeProject(){
   if(!S.openCodes.length)return;
-  if(!confirm('¿Quitar este proyecto de la lista?\n(Los datos se conservan)'))return;
+  const cod=S.openCodes[S.ci];
+  if(!confirm(`¿Eliminar el proyecto ${cod} y todos sus datos (fotos, formularios, firmas)?\n\nExporte primero si desea conservarlos.`))return;
+
+  // Borrar todos los datos asociados al código
+  // rec: claves que empiezan con cod_
+  for(const k of Object.keys(S.rec)) if(k.startsWith(cod+'_'))delete S.rec[k];
+  // ph: claves ph_cod_*
+  for(const k of Object.keys(S.ph)) if(k.startsWith('ph_'+cod+'_'))delete S.ph[k];
+  // sigs: claves cod_*
+  for(const k of Object.keys(S.sigs)) if(k.startsWith(cod+'_'))delete S.sigs[k];
+  // inv: claves inv_cod_*
+  for(const k of Object.keys(S.inv)) if(k.startsWith('inv_'+cod+'_'))delete S.inv[k];
+  // files: claves f_cod_*
+  for(const k of Object.keys(S.files)) if(k.startsWith('f_'+cod+'_'))delete S.files[k];
+  // visitas
+  delete S.visitas[cod];
+
   S.openCodes.splice(S.ci,1);
-  if(!S.openCodes.length){S.ci=0;showPortada();}
-  else{S.ci=Math.min(S.ci,S.openCodes.length-1);renderCurrent();}
-  persist();
+  if(!S.openCodes.length){S.ci=0;persist();showPortada();}
+  else{S.ci=Math.min(S.ci,S.openCodes.length-1);persist();renderCurrent();}
 }
 
 /* ── NAV ─────────────────────────────────────────── */
