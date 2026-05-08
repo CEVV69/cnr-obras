@@ -1386,12 +1386,44 @@ function bVisita(p,isT,rec,rk){
     return `<div class="arch-slot" onclick="upFile('${fk}','${sl}',this)"><span class="arch-lbl">${sl}</span><div class="arch-box ${fi?'has':''}">${fi?'📎':''}</div></div>`;
   }).join('');
 
+  const vTV={
+    conf:{
+      si:'a) Conformidad con el Proyecto: Se verifica que la ejecución física de las obras de riego o drenaje se ajustan estrictamente al proyecto aprobado y bonificado.',
+      no:'a) Conformidad con el Proyecto: Se constata que la ejecución física de las obras de riego o drenaje presenta desviaciones respecto al proyecto aprobado y bonificado.'
+    },
+    camb:{
+      si:'b) Detección de Cambios: Se identifican variaciones o cambios en relación con el proyecto técnico original, se deja constancia de ellos en libro de obras y en esta acta.',
+      no:'b) Detección de Cambios: No se identifican variaciones ni cambios en relación con el proyecto técnico original.'
+    },
+    proc:{
+      si:'c) Procesos Constructivos: La calidad de los procesos de construcción, el emplazamiento de las obras y el cumplimiento de las especificaciones técnicas cumplen con lo aprobado en el proyecto.',
+      no:'c) Procesos Constructivos: La calidad de los procesos de construcción, el emplazamiento de las obras y/o las especificaciones técnicas no cumplen con lo aprobado en el proyecto.'
+    }
+  };
+  const vRowV=(f,key)=>`
+    <div style="margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+        <select data-f="${f}" style="background:white;border:1px solid #ccc;padding:3px 8px;border-radius:4px;font-size:12px;min-width:60px;flex-shrink:0;font-weight:600" onchange="save();renderCurrent()">
+          <option value="">—</option>
+          <option value="Sí" ${rec[f]==='Sí'?'selected':''}>Sí</option>
+          <option value="No" ${rec[f]==='No'?'selected':''}>No</option>
+        </select>
+        <div style="font-size:13px;color:#1a2a3a;line-height:1.4">${rec[f]==='No'?vTV[key].no:vTV[key].si}</div>
+      </div>
+    </div>`;
+
   return `<div style="background:linear-gradient(135deg,#2e3d5c,#4a5e82);border-radius:8px;padding:10px 12px 6px;margin-bottom:12px">${tabBar}</div>`
     +bIdent(p,isT,rec)
-    +`<div class="slabel" style="margin-top:6px">VISITA DE SUPERVISIÓN V${vi+1}:</div>
+    +`<div class="slabel" style="margin-top:6px">VERIFICACIONES:</div>
+    ${vRowV('_vconf','conf')}
+    ${vRowV('_vcamb','camb')}
+    ${vRowV('_vproc','proc')}
+    <div class="slabel" style="margin-top:6px">VISITA DE SUPERVISIÓN V${vi+1}:</div>
     <div class="frow"><span class="fl">% Avance estimado</span><span class="fc">:</span><span class="fi" style="display:flex;align-items:center;gap:8px"><input type="range" data-f="_av" min="0" max="100" step="5" value="${av}" oninput="document.getElementById('avl').textContent=this.value+'%'" style="flex:1"><strong id="avl" style="min-width:36px;color:#2e3d5c">${av}%</strong></span></div>
     <div class="obs-box" style="margin-top:6px">
       <div class="obs-fld"><div class="obs-lbl">Observaciones técnicas</div><textarea data-f="_obs_vis" rows="4">${x(rec['_obs_vis']||'')}</textarea></div>
+    </div>
+    <div class="obs-box" style="margin-top:10px">
       <div class="obs-fld"><div class="obs-lbl">Acuerdos y compromisos</div><textarea data-f="_acuerd" rows="3">${x(rec['_acuerd']||'')}</textarea></div>
     </div>
     <div class="frow"><span class="fl">Próxima visita</span><span class="fc">:</span><span class="fi" style="max-width:155px">${edt('_prox',rec)}</span></div>
@@ -1920,6 +1952,16 @@ function buildPDFHTML(p,m,rec,isT,items,photos,sig){
   // ══ VISITA ═══════════════════════════════════════════════════════
   // Número de visita viene en rec['_vi'] que guardamos al llamar
   const viNum=rec['_viNum']||1;
+  const vTxtV={
+    conf:{si:'a) Conformidad con el Proyecto: Se verifica que la ejecución física de las obras de riego o drenaje se ajustan estrictamente al proyecto aprobado y bonificado.',no:'a) Conformidad con el Proyecto: Se constata que la ejecución física de las obras de riego o drenaje presenta desviaciones respecto al proyecto aprobado y bonificado.'},
+    camb:{si:'b) Detección de Cambios: Se identifican variaciones o cambios en relación con el proyecto técnico original, se deja constancia de ellos en libro de obras y en esta acta.',no:'b) Detección de Cambios: No se identifican variaciones ni cambios en relación con el proyecto técnico original.'},
+    proc:{si:'c) Procesos Constructivos: La calidad de los procesos de construcción, el emplazamiento de las obras y el cumplimiento de las especificaciones técnicas cumplen con lo aprobado en el proyecto.',no:'c) Procesos Constructivos: La calidad de los procesos de construcción, el emplazamiento de las obras y/o las especificaciones técnicas no cumplen con lo aprobado en el proyecto.'}
+  };
+  const vLineV=(key,f)=>{
+    const v=rec[f]||'';
+    const txt=v==='No'?vTxtV[key].no:vTxtV[key].si;
+    return `<div style="font-size:10.5px;line-height:1.5;margin-bottom:6px">${txt}</div>`;
+  };
   const pg1cls=photos.length?'page':'page-last';
   const obsVisita=(rec['_obs_vis']||rec['_acuerd'])?`
     <div style="margin-top:10px;font-size:10.5px">
@@ -1931,7 +1973,11 @@ function buildPDFHTML(p,m,rec,isT,items,photos,sig){
       ${hdr(`ACTA DE SUPERVISIÓN — PROYECTO ${x(p['Código Proyecto']||'')}`, 'LEY 18.450')}
       <div class="sec sec-id">1.- IDENTIFICACIÓN:</div>
       ${idT()}
-      <div class="sec sec-inv">2.- VISITA DE SUPERVISIÓN N° ${viNum}:</div>
+      <div class="sec sec-inv">2.- VERIFICACIONES:</div>
+      ${vLineV('conf','_vconf')}
+      ${vLineV('camb','_vcamb')}
+      ${vLineV('proc','_vproc')}
+      <div class="sec sec-inv">3.- VISITA DE SUPERVISIÓN N° ${viNum}:</div>
       <table class="id-t">
         <tr><td class="lb">Fecha visita</td><td class="sp">:</td><td class="vl">${x(rec['_fecha']||'')}</td></tr>
         <tr><td class="lb">% Avance estimado</td><td class="sp">:</td><td class="vl">${x(rec['_av']||'0')}%</td></tr>
