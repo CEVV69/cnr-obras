@@ -598,6 +598,16 @@ body{background:#b8bec8}
         </div>
       </div>
 
+      <div style="margin-top:16px;padding-top:12px;border-top:1px solid #e0e4ea">
+        <div style="font-size:12px;font-weight:700;color:#c0392b;margin-bottom:6px">⚠️ Limpieza de datos</div>
+        <button onclick="cleanOrphanData()" style="width:100%;padding:8px;background:#fff0f0;border:1px solid #e0a0a0;border-radius:5px;color:#c0392b;font-size:12px;font-weight:600;cursor:pointer;margin-bottom:6px">
+          🧹 Limpiar datos sin proyecto activo
+        </button>
+        <button onclick="clearAllData()" style="width:100%;padding:8px;background:#fee;border:1px solid #c0392b;border-radius:5px;color:#c0392b;font-size:12px;font-weight:700;cursor:pointer">
+          🗑️ Borrar TODO (proyectos, datos y fotos)
+        </button>
+      </div>
+
     </div>
   </div>
 </div>
@@ -2310,7 +2320,33 @@ function openAdmin(){
     console.log('[openAdmin] ERROR: admin-modal element not found');
   }
 }
-function closeAdmin(){document.getElementById('admin-modal').classList.remove('on');}
+function cleanOrphanData(){
+  // Borra datos de proyectos que ya no están en openCodes
+  const active=new Set(S.openCodes);
+  let count=0;
+  const clean=(obj,keyFn)=>{for(const k of Object.keys(obj)){if(!active.has(keyFn(k))){delete obj[k];count++;}}};
+  clean(S.rec,   k=>k.split('_')[0]);
+  clean(S.ph,    k=>k.replace(/^ph_/,'').split('_')[0]);
+  clean(S.sigs,  k=>k.split('_')[0]);
+  clean(S.inv,   k=>k.replace(/^inv_/,'').split('_')[0]);
+  clean(S.files, k=>k.replace(/^f_/,'').split('_')[0]);
+  for(const k of Object.keys(S.visitas)){if(!active.has(k))delete S.visitas[k];}
+  persist();
+  updateStorageInfo();
+  toast(`🧹 ${count} entradas eliminadas`, 3000);
+}
+
+function clearAllData(){
+  if(!confirm('¿Borrar TODOS los datos, proyectos y fotos?\n\nEsta acción no se puede deshacer.'))return;
+  S.openCodes=[];S.ci=0;S.mod='recepcion';
+  S.rec={};S.inv={};S.ph={};S.files={};S.sigs={};S.visitas={};
+  persist();
+  showPortada();
+  updateStorageInfo();
+  toast('🗑️ Todos los datos eliminados', 3000);
+}
+
+
 
 function updateAdmStatus(){
   const el=document.getElementById('adm-status');
