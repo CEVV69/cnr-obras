@@ -2320,6 +2320,8 @@ function openAdmin(){
     console.log('[openAdmin] ERROR: admin-modal element not found');
   }
 }
+function closeAdmin(){document.getElementById('admin-modal').classList.remove('on');}
+
 function cleanOrphanData(){
   // Borra datos de proyectos que ya no están en openCodes
   const active=new Set(S.openCodes);
