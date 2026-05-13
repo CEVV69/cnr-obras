@@ -382,8 +382,7 @@ body{background:#b8bec8}
 #gear-btn:hover{background:rgba(255,255,255,.3)}
 
 /* ── ADMIN MODAL ── */
-#admin-modal{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;z-index:2000;padding:16px;cursor:pointer;-webkit-tap-highlight-color:transparent}
-#admin-modal.on{display:flex}
+#admin-modal{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;z-index:2000;padding:16px;-webkit-tap-highlight-color:transparent}
 #admin-modal .adm-box{cursor:default}
 .adm-box{background:#fff;border-radius:8px;width:100%;max-width:420px;box-shadow:0 8px 32px rgba(0,0,0,.3);overflow:hidden}
 .adm-hd{background:linear-gradient(90deg,#2e3d5c,#4a5878);color:#fff;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;font-size:13px;font-weight:700}
@@ -724,9 +723,9 @@ addEventListener('DOMContentLoaded',async ()=>{
   ['admin-modal','info-modal','srch-modal'].forEach(id=>{
     const el=document.getElementById(id);
     if(!el)return;
-    const handler=e=>{if(e.target===el)el.classList.remove('on'),el.style.display='none';};
-    el.addEventListener('click',handler);
-    el.addEventListener('touchend',e=>{if(e.target===el){e.preventDefault();handler(e);}},{passive:false});
+    const close=()=>{el.style.display='none';};
+    el.addEventListener('click',e=>{if(e.target===el)close();});
+    el.addEventListener('touchend',e=>{if(e.target===el){e.preventDefault();close();}},{passive:false});
   });
   try{await openDB();}catch(e){}
   try{await loadFromDB();}catch(e){}
@@ -2319,17 +2318,14 @@ function importJSON(event){
 
 /* ── ADMIN MODAL ─────────────────────────────────── */
 function openAdmin(){
-  console.log('[openAdmin] opening admin modal');
   updateAdmStatus();
   const el=document.getElementById('admin-modal');
-  if(el){
-    el.classList.add('on');
-    console.log('[openAdmin] admin-modal opened');
-  } else {
-    console.log('[openAdmin] ERROR: admin-modal element not found');
-  }
+  if(el){el.style.display='flex';}
 }
-function closeAdmin(){const m=document.getElementById('admin-modal');m.classList.remove('on');m.style.display='none';}
+function closeAdmin(){
+  const m=document.getElementById('admin-modal');
+  if(m){m.style.display='none';}
+}
 
 function cleanOrphanData(){
   // Borra datos de proyectos que ya no están en openCodes
@@ -2961,21 +2957,12 @@ function extractAndFillInventory(rows, fk){
 
   /* ── Phase 7: determine project type and build rows ── */
   // fk = "f_COD_mod_Slot" — extract cod+mod reliably from key
-  const MODS=['recepcion','inventario','avance','cierre'];
-  const fkParts=fk.replace(/^f_/,'').split('_');
-  const modIdx=fkParts.findIndex(pt=>MODS.includes(pt));
-  const cod=modIdx>0?fkParts.slice(0,modIdx).join('_'):(S.openCodes[S.ci]||'');
-  const mod=modIdx>=0?fkParts[modIdx]:S.mod;
-  console.log('[parsePpto] Phase7: fk='+fk+' fkParts='+JSON.stringify(fkParts)+' modIdx='+modIdx+' cod='+cod+' mod='+mod);
-  if(!cod){
-    console.log('[parsePpto] Phase7 ABORT: no cod found');
-    toast('⚠️ No se pudo identificar el proyecto');
-    return;
-  }
+  const cod=S.openCodes[S.ci]||'';
+  if(!cod){toast('⚠️ No se pudo identificar el proyecto');return;}
   const p=S.allProjects.find(r=>r['Código Proyecto']===cod);
   const isT=p?String(p['Tipo Obra']||'').toLowerCase().includes('tecnif'):true;
-  const ik=`inv_${cod}_${mod}`;
-  console.log('[parsePpto] Phase7: cod='+cod+' mod='+mod+' isT='+isT+' ik='+ik+' projectFound='+!!p);
+  const ik=`inv_${cod}_datos`;
+  console.log('[parsePpto] Phase7: fk='+fk+' cod='+cod+' ik='+ik+' isT='+isT);
 
   /* ── Phase 7b: deduplicate by description, sum quantities ── */
   const dedupMap=new Map();
