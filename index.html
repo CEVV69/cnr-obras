@@ -612,7 +612,21 @@ body{background:#b8bec8}
   </div>
 </div>
 
-<!-- INFO MODAL -->
+<!-- FILE OPTIONS MODAL -->
+<div id="file-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:3000;align-items:center;justify-content:center;padding:20px">
+  <div style="background:#fff;border-radius:10px;width:100%;max-width:320px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.3)">
+    <div style="background:linear-gradient(90deg,#2e3d5c,#4a5878);color:#fff;padding:12px 16px;font-size:13px;font-weight:700" id="fmod-title">Archivo</div>
+    <div style="padding:14px 16px;font-size:12px;color:#555" id="fmod-name"></div>
+    <div style="display:flex;flex-direction:column;gap:8px;padding:0 16px 16px">
+      <button id="fmod-ver" style="padding:10px;border:none;border-radius:6px;background:#2e3d5c;color:#fff;font-size:13px;font-weight:600;cursor:pointer">👁 Ver archivo</button>
+      <button id="fmod-rep" style="padding:10px;border:none;border-radius:6px;background:#e8f0ff;color:#2e3d5c;font-size:13px;font-weight:600;cursor:pointer;border:1px solid #b0c0e0">🔄 Reemplazar</button>
+      <button id="fmod-del" style="padding:10px;border:none;border-radius:6px;background:#fff0f0;color:#c0392b;font-size:13px;font-weight:600;cursor:pointer;border:1px solid #e0a0a0">🗑 Eliminar archivo</button>
+      <button id="fmod-cls" style="padding:10px;border:none;border-radius:6px;background:#f0f0f0;color:#555;font-size:13px;cursor:pointer">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+
 <div class="mbg" id="info-modal" onclick="if(event.target===this)closeInfo()">
   <div class="mbox">
     <div class="mhd"><span>ℹ️ Más Información del Proyecto</span><button class="mcl" onclick="closeInfo()">✕</button></div>
@@ -720,7 +734,7 @@ function loadFromDB(){
 
 addEventListener('DOMContentLoaded',async ()=>{
   // Cerrar modales al tocar el overlay — compatible iOS PWA
-  ['admin-modal','info-modal','srch-modal'].forEach(id=>{
+  ['admin-modal','info-modal','srch-modal','file-modal'].forEach(id=>{
     const el=document.getElementById(id);
     if(!el)return;
     const close=()=>{el.style.display='none';};
@@ -1520,35 +1534,56 @@ function bVisita(p,isT,rec,rk){
 }
 
 /* ── FILES ───────────────────────────────────────── */
-function upFile(fk,sl,el){
-  const inp=document.createElement('input');
-  // Presupuesto accepts xlsx too; others mainly PDF
-  inp.type='file';
-  inp.accept=sl==='Presupuesto'?'.xlsx,.xls,.pdf,.png,.jpg':'.pdf,.png,.jpg,.jpeg,.xlsx,.doc,.docx';
-  if(S.files[fk]){
-    if(confirm(`Archivo: ${S.files[fk].name}\n\n[OK] Abrir · [Cancelar] Reemplazar`)){viFile(fk);return;}
-  }
-  inp.onchange=async e=>{
-    const f=e.target.files[0];if(!f)return;
-    const fr=new FileReader();
-    fr.onload=async ev=>{
-      S.files[fk]={name:f.name,type:f.type,data:ev.target.result};
-      persist();
-      const box=el.querySelector('.arch-box');
-      if(box){box.className='arch-box has';box.textContent='📎';}
-      toast('📎 '+f.name);
-      // Auto-parse Presupuesto/Cubicaciones for inventory pre-fill
-      const isPresSlot=(sl==='Presupuesto'||sl==='Cubicaciones');
-      if(isPresSlot){
-        const nm=f.name.toLowerCase();
-        if(nm.endsWith('.xlsx')||nm.endsWith('.xls')) parsePrespuesto(ev.target.result,fk);
-        else if(nm.endsWith('.pdf')) await parsePrespuestoPDF(ev.target.result,fk);
-      }
+function upFile(fk,sl,elSlot){
+  const accept=sl==='Presupuesto'?'.xlsx,.xls,.pdf,.png,.jpg':'.pdf,.png,.jpg,.jpeg,.xlsx,.doc,.docx';
+
+  const doLoad=()=>{
+    const inp=document.createElement('input');
+    inp.type='file';inp.accept=accept;
+    inp.onchange=async e=>{
+      const f=e.target.files[0];if(!f)return;
+      const fr=new FileReader();
+      fr.onload=async ev=>{
+        S.files[fk]={name:f.name,type:f.type,data:ev.target.result};
+        persist();
+        // Actualizar visual del slot
+        const box=elSlot?elSlot.querySelector('.arch-box'):document.querySelector(`[onclick*="${fk}"] .arch-box`);
+        if(box){box.className='arch-box has';box.textContent='📎';}
+        toast('📎 '+f.name);
+        const isPresSlot=(sl==='Presupuesto'||sl==='Cubicaciones');
+        if(isPresSlot){
+          const nm=f.name.toLowerCase();
+          if(nm.endsWith('.xlsx')||nm.endsWith('.xls')) parsePrespuesto(ev.target.result,fk);
+          else if(nm.endsWith('.pdf')) await parsePrespuestoPDF(ev.target.result,fk);
+        }
+      };
+      fr.readAsDataURL(f);
     };
-    fr.readAsDataURL(f);
-  };inp.click();
+    inp.click();
+  };
+
+  if(S.files[fk]){
+    // Mostrar modal con opciones
+    const m=document.getElementById('file-modal');
+    document.getElementById('fmod-title').textContent=sl;
+    document.getElementById('fmod-name').textContent='📄 '+S.files[fk].name;
+    m.style.display='flex';
+    document.getElementById('fmod-ver').onclick=()=>{closeFileModal();viFile(fk);};
+    document.getElementById('fmod-rep').onclick=()=>{closeFileModal();doLoad();};
+    document.getElementById('fmod-del').onclick=()=>{
+      if(!confirm('¿Eliminar este archivo?'))return;
+      delete S.files[fk];persist();
+      const box=elSlot?elSlot.querySelector('.arch-box'):document.querySelector(`[onclick*="${fk}"] .arch-box`);
+      if(box){box.className='arch-box';box.textContent='';}
+      closeFileModal();toast('🗑 Archivo eliminado');
+    };
+    document.getElementById('fmod-cls').onclick=closeFileModal;
+  } else {
+    doLoad();
+  }
 }
-function viFile(fk){const f=S.files[fk];if(!f)return;const w=window.open();w.document.write(`<iframe src="${f.data}" style="width:100%;height:100%;border:none"></iframe>`);}
+function closeFileModal(){document.getElementById('file-modal').style.display='none';}
+function viFile(fk){const f=S.files[fk];if(!f)return;const w=window.open();if(w)w.document.write(`<iframe src="${f.data}" style="width:100%;height:100%;border:none"></iframe>`);}
 
 function oGPS(lat,lng,norte,este){
   // Strategy 1: use LatitudConvertida/LongitudConvertida if valid WGS84
