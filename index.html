@@ -3030,20 +3030,41 @@ function extractAndFillInventory(rows, fk){
 
   /* ── Phase 8: merge or replace ── */
   const existing=S.inv[ik]||[];
-  const isEmpty=existing.length===0||(existing.length===1&&!existing[0].elem&&!existing[0].tipo);
-  console.log('[parsePpto] Phase8: existing items='+existing.length+' isEmpty='+isEmpty);
+  // Vacío = sin items, o solo el item placeholder vacío
+  const isEmpty=existing.length===0||
+    (existing.length===1&&
+     !existing[0].elem&&!existing[0].tipo&&
+     !existing[0].mod&&!existing[0].cant);
+
+  const doLoad=()=>{
+    S.inv[ik]=newItems;
+    persist();
+    renderCurrent();
+    toast(`✅ ${newItems.length} ítems cargados del presupuesto`,4000);
+  };
+
   if(!isEmpty){
-    if(!confirm(`Se encontraron ${newItems.length} ítems del presupuesto.\n¿Reemplazar inventario actual?\n[OK]=Reemplazar`)) {
-      console.log('[parsePpto] Phase8: user cancelled replace');
-      return;
-    }
+    // Mostrar confirmación sin usar confirm() nativo (problemático en iOS PWA)
+    const fmod=document.getElementById('file-modal');
+    document.getElementById('fmod-title').textContent='Inventario existente';
+    document.getElementById('fmod-name').textContent=`Se encontraron ${newItems.length} ítems en el presupuesto. ¿Reemplazar el inventario actual?`;
+    document.getElementById('fmod-ver').style.display='none';
+    document.getElementById('fmod-del').style.display='none';
+    const repBtn=document.getElementById('fmod-rep');
+    repBtn.textContent='✅ Sí, reemplazar';
+    repBtn.onclick=()=>{closeFileModal();repBtn.textContent='🔄 Reemplazar';document.getElementById('fmod-ver').style.display='';document.getElementById('fmod-del').style.display='';doLoad();};
+    document.getElementById('fmod-cls').textContent='Cancelar';
+    document.getElementById('fmod-cls').onclick=()=>{
+      closeFileModal();
+      document.getElementById('fmod-cls').textContent='Cerrar';
+      document.getElementById('fmod-ver').style.display='';
+      document.getElementById('fmod-del').style.display='';
+      repBtn.textContent='🔄 Reemplazar';
+    };
+    fmod.style.display='flex';
+  } else {
+    doLoad();
   }
-  S.inv[ik]=newItems;
-  persist();
-  console.log('[parsePpto] Phase8: persisted '+newItems.length+' items to S.inv['+ik+']');
-  renderCurrent();
-  toast(`✅ ${newItems.length} ítems cargados (total $${Math.round(grandTotal).toLocaleString('es-CL')})`);
-  console.log('[parsePpto] COMPLETE: inventory loaded');
 }
 
 /* ── EXPORTAR / IMPORTAR JSON (sincronización entre dispositivos) ── */
