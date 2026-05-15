@@ -2708,16 +2708,16 @@ function parsePrespuesto(dataURL, fk){
     for(let i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
     const wb=XLSX.read(arr,{type:'array'});
 
-    // Try each sheet, pick the one with most data
-    let bestRows=[];
+    // Acumular filas de TODAS las hojas
+    let allRows=[];
     wb.SheetNames.forEach(shName=>{
       const ws=wb.Sheets[shName];
       const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
-      if(rows.length>bestRows.length) bestRows=rows;
+      allRows=allRows.concat(rows);
     });
 
-    if(!bestRows.length){toast('⚠️ Presupuesto vacío');return;}
-    extractAndFillInventory(bestRows, fk);
+    if(!allRows.length){toast('⚠️ Presupuesto vacío');return;}
+    extractAndFillInventory(allRows, fk);
   }catch(err){
     console.error('Excel parse error:',err);
     toast('⚠️ Error al leer el Excel de presupuesto');
@@ -2819,235 +2819,151 @@ function extractPDFText(bin){
 
 /* ── CORE: extract items from rows (used by both Excel and PDF parsers) ── */
 function extractAndFillInventory(rows, fk){
-  /* helpers */
-  const toNum=v=>{
-    let s=String(v||'').replace(/[$\s%°]/g,'').trim();
-    if(!s||s==='-'||s==='—') return NaN;
-    // Chilean: 1.234.567,89
-    const dots=(s.match(/\./g)||[]).length;
-    const commas=(s.match(/,/g)||[]).length;
-    if(commas>0&&dots>0) s=s.replace(/\./g,'').replace(',','.');
-    else if(dots>1) s=s.replace(/\./g,'');
-    else if(commas>0&&dots===0) s=s.replace(',','.');
-    const n=parseFloat(s);
-    return n;
+  // Helpers
+  const toNum=v=>{if(v===''||v===null||v===undefined)return NaN;const n=parseFloat(String(v).replace(/[^0-9.,-]/g,'').replace(',','.'));return isNaN(n)?NaN:n;};
+  const clean=v=>String(v||'').replace(/\s+/g,' ').trim();
+  const isGoodDesc=v=>{
+    if(!v||v.length<3)return false;
+    // Excluir encabezados, partidas, totales
+    const lv=v.toLowerCase();
+    const exclude=['total','subtotal','costo unit','cost unit','superficie','precio unit','iva','valor unit','$/h','detalle','presupuesto','item','descripcion','descripción','partida','n°'];
+    if(exclude.some(e=>lv.startsWith(e)))return false;
+    // Excluir si es solo número o código (ej "1.1.2")
+    if(/^[0-9.\s]+$/.test(v))return false;
+    return true;
   };
-  const clean=v=>String(v||'').trim().replace(/\s+/g,' ');
-  const isDesc=v=>{
-    const s=clean(v);
-    if(s.length<3) return false;
-    if(/^\d+([.,]\d+)?$/.test(s)) return false; // pure number
-    if(/^[\d\s.,-]+$/.test(s)) return false;     // only numbers/separators
-    return /[a-zA-ZáéíóúñüÁÉÍÓÚÑÜ]/.test(s);     // must have letters
-  };
-  const lc=v=>String(v||'').toLowerCase().normalize('NFD').replace(/\p{M}/gu,'');
 
-  /* ── Phase 1: detect header row ── */
-  let headerRow=-1,descCol=-1,amtCol=-1,cantCol=-1,unitCol=-1;
+  /* ── ESTRATEGIA ESTRUCTURAL ──────────────────────────────────
+     Para cada fila, buscar el patrón: texto + cant numérica + precio unit + subtotal
+     Columnas pueden variar, por lo que las detectamos dinámicamente.
+  ── */
 
-  // Keywords (normalize accents before compare)
-  const norm=s=>String(s||'').toLowerCase().normalize('NFD').replace(/\p{M}/gu,'');
-  const descKW=['descripcion','partida','item','detalle','concepto','nombre','material','elemento','obra','actividad','trabajo','glosa'];
-  const amtKW=['total','monto','precio','valor','importe','subtotal','costo'];
-  const cantKW=['cant','cantidad','ctd','num','n°','no.','unidades'];
-  const unitKW=['unidad','ud.','un.','u.m.','medida'];
+  // Paso 1: detectar columnas buscando la fila de encabezado
+  let descCol=-1, unitCol=-1, cantCol=-1, unitPriceCol=-1, subtotalCol=-1;
+  
+  const descKW=['item','descripcion','descripción','detalle','material','obra','elemento'];
+  const unitKW=['unid','unit','u.','gl','m.','m3','m2','kg'];
+  const cantKW=['cant','cantidad','n°','num'];
+  const priceKW=['valor unit','precio unit','v.unit','p.unit','unit price','precio','valor'];
+  const subtotKW=['subtotal','sub total','parcial','monto','importe','total item','valor total'];
 
-  // Phase 1a: look for header row with multiple matching keywords
-  for(let r=0;r<Math.min(30,rows.length)&&headerRow<0;r++){
+  for(let r=0;r<Math.min(rows.length,20);r++){
     const row=rows[r]||[];
-    if(row.length<3) continue; // header must have at least 3 columns
-    
-    let dC=-1,aC=-1,cC=-1,uC=-1;
-    let kwCount=0; // count ALL keyword matches in this row
-    const cellMatches=[]; // track (col, type) pairs
-    
-    for(let c=0;c<row.length;c++){
-      const v=norm(row[c]);
-      if(!v||v.length<2) continue;
-      
-      if(descKW.some(k=>v.includes(k))){dC=c;kwCount++;cellMatches.push([c,'d']);}
-      if(amtKW.some(k=>v.includes(k))){aC=c;kwCount++;cellMatches.push([c,'a']);}
-      if(cantKW.some(k=>v.includes(k))){cC=c;kwCount++;cellMatches.push([c,'c']);}
-      if(unitKW.some(k=>v.includes(k))){uC=c;kwCount++;cellMatches.push([c,'u']);}
+    const rowLower=row.map(v=>String(v||'').toLowerCase().trim());
+    let dC=-1,uC=-1,cC=-1,pC=-1,sC=-1;
+    for(let c=0;c<rowLower.length;c++){
+      const v=rowLower[c];
+      if(dC<0&&descKW.some(k=>v.includes(k)))dC=c;
+      else if(uC<0&&unitKW.some(k=>v===k||v.includes(k)&&v.length<8))uC=c;
+      else if(cC<0&&cantKW.some(k=>v.includes(k)))cC=c;
+      else if(pC<0&&priceKW.some(k=>v.includes(k)))pC=c;
+      else if(sC<0&&subtotKW.some(k=>v.includes(k)))sC=c;
     }
-    
-    // Accept as header if: 3+ distinct keyword matches, including desc AND (amt OR unit), AND columns are different
-    const hasDesc=dC>=0;
-    const hasAmt=aC>=0;
-    const hasUnit=uC>=0;
-    const hasCant=cC>=0;
-    const allDiff=new Set([dC,aC,cC,uC].filter(x=>x>=0)).size===([dC,aC,cC,uC].filter(x=>x>=0)).length;
-    
-    if(kwCount>=3&&hasDesc&&(hasAmt||hasUnit)&&allDiff){
-      headerRow=r; descCol=dC; amtCol=aC;
-      cantCol=cC>=0?cC:-1; unitCol=uC>=0?uC:-1;
-      console.log('[parsePpto] Phase1 header detected: row='+r+' desc='+dC+' amt='+aC+' cant='+cC+' unit='+uC+' kwCount='+kwCount);
-      break; // stop at first valid header
+    if(dC>=0&&(cC>=0||pC>=0||sC>=0)){
+      descCol=dC;unitCol=uC;cantCol=cC;unitPriceCol=pC;subtotalCol=sC;
+      break;
     }
   }
 
-  /* Phase 2: fallback heuristic if phase 1 failed */
-  if(headerRow<0||descCol<0||amtCol<0){
-    console.log('[parsePpto] Phase1 failed, running Phase2 fallback. rows='+rows.length);
-    const scanN=Math.min(80,rows.length);
-    const maxCols=rows.slice(0,scanN).reduce((m,r)=>Math.max(m,(r||[]).length),0);
-    console.log('[parsePpto] Phase2: maxCols='+maxCols+' scanRows='+scanN);
-    
-    // Find amount column (rightmost with most positive numbers)
-    let bestAmtScore=-1;
+  // Paso 2: si no encontramos header, inferir por posición típica del FT01
+  // FT01: col0=vacio, col1=desc, col2=unidad, col3=cant, col4=precio_unit, col5=subtotal, col6=total_partida
+  if(descCol<0){
+    // Buscar la columna con más texto largo (desc) y columnas numéricas
+    const maxCols=rows.slice(0,50).reduce((m,r)=>Math.max(m,(r||[]).length),0);
+    let bestDescScore=-1;
     for(let c=0;c<maxCols;c++){
-      let hits=0;
-      for(let r=0;r<scanN;r++){const n=toNum((rows[r]||[])[c]);if(!isNaN(n)&&n>0)hits++;}
-      const score=hits+(c*0.05); // slight bias to right
-      if(score>bestAmtScore){bestAmtScore=score;amtCol=c;}
-    }
-    
-    // Find desc column (leftmost with longest text that's not numeric)
-    let bestLen=0;
-    for(let c=0;c<Math.max(1,amtCol);c++){
-      let len=0,cnt=0;
-      for(let r=0;r<scanN;r++){const v=clean((rows[r]||[])[c]);if(v.length>2&&isNaN(toNum(v))){len+=v.length;cnt++;}}
-      if(cnt>0&&len>bestLen){bestLen=len;descCol=c;}
-    }
-    
-    headerRow=0;
-    console.log('[parsePpto] Phase2 result: desc_col='+descCol+' amt_col='+amtCol+' bestAmtScore='+bestAmtScore+' bestDescLen='+bestLen);
-  }
-
-  /* ── Phase 3: find TOTAL row (scan bottom-up) ── */
-  let totalRow=rows.length;
-  const totalKW=['total general','gran total','monto total','total obras','total proyecto','presupuesto total'];
-  for(let r=rows.length-1;r>headerRow+2;r--){
-    const row=rows[r];
-    const rowText=row.map(v=>lc(v)).join(' ');
-    if(totalKW.some(k=>rowText.includes(k))){totalRow=r;break;}
-    const firstText=clean(row.find(v=>String(v||'').trim().length>0)||'');
-    if(lc(firstText)==='total'&&r>headerRow+5){totalRow=r;break;}
-  }
-  console.log('[parsePpto] Phase3: totalRow='+totalRow+' (of '+rows.length+')');
-
-  /* ── Phase 4: collect items ── */
-  const allItems=[];
-  let grandTotal=0;
-
-  for(let r=headerRow+1;r<totalRow;r++){
-    const row=rows[r];
-    if(!row||!row.length) continue;
-    const desc=clean(row[descCol]||'');
-    if(!isDesc(desc)) continue;
-    let amt=toNum(row[amtCol]);
-    if(isNaN(amt)||amt<=0){
-      for(let c=Math.max(0,amtCol-2);c<Math.min(row.length,amtCol+4);c++){
-        const n=toNum(row[c]);
-        if(!isNaN(n)&&n>0){amt=n;break;}
+      let score=0;
+      for(let r=0;r<Math.min(rows.length,50);r++){
+        const v=clean((rows[r]||[])[c]);
+        if(v.length>8&&isNaN(toNum(v)))score+=v.length;
       }
+      if(score>bestDescScore){bestDescScore=score;descCol=c;}
     }
-    if(isNaN(amt)||amt<=0) continue;
+    // Columnas numéricas: buscar cant (menor magnitud) y subtotal (mayor magnitud) a la derecha del desc
+    const numCols=[];
+    for(let c=descCol+1;c<maxCols;c++){
+      let sum=0,cnt=0;
+      for(let r=0;r<Math.min(rows.length,50);r++){
+        const n=toNum((rows[r]||[])[c]);
+        if(!isNaN(n)&&n>0){sum+=n;cnt++;}
+      }
+      if(cnt>2)numCols.push({c,avg:sum/cnt,cnt});
+    }
+    numCols.sort((a,b)=>a.c-b.c);
+    if(numCols.length>=2){
+      // Cant: columna con valores pequeños (< 1000 promedio), Subtotal: columna con valores grandes
+      const smallCols=numCols.filter(x=>x.avg<10000);
+      const bigCols=numCols.filter(x=>x.avg>=1000);
+      cantCol=smallCols.length>0?smallCols[0].c:-1;
+      subtotalCol=bigCols.length>0?bigCols[bigCols.length-1].c:-1;
+      if(numCols.length>=3)unitPriceCol=numCols[numCols.length-2>0?numCols.length-2:0].c;
+    }
+  }
+
+  // Paso 3: recopilar ítems válidos
+  const items=[];
+  const seenDescs=new Set();
+
+  for(let r=0;r<rows.length;r++){
+    const row=rows[r]||[];
+    const desc=clean(row[descCol]||'');
+    if(!isGoodDesc(desc))continue;
+
+    // Validar que tiene al menos cant O subtotal numérico
+    const cant=cantCol>=0?toNum(row[cantCol]):NaN;
+    const subtot=subtotalCol>=0?toNum(row[subtotalCol]):NaN;
+    const uprice=unitPriceCol>=0?toNum(row[unitPriceCol]):NaN;
+
+    // Ítem válido: tiene subtotal O (cantidad Y precio unit)
+    const hasNumbers=(!isNaN(subtot)&&subtot>0)||((!isNaN(cant)&&cant>0)&&(!isNaN(uprice)&&uprice>0));
+    if(!hasNumbers)continue;
+
+    // Deduplicar por descripción exacta
+    const key=desc.toLowerCase();
+    if(seenDescs.has(key))continue;
+    seenDescs.add(key);
+
     const unit=unitCol>=0?clean(row[unitCol]||''):'';
-    const cant=cantCol>=0?clean(row[cantCol]||''):'1';
-    allItems.push({desc,amt,unit,cant:cant||'1'});
-    grandTotal+=amt;
+    const cantStr=!isNaN(cant)&&cant>0?String(cant):'1';
+    items.push({desc,unit,cant:cantStr,subtot:isNaN(subtot)?0:subtot});
   }
-  console.log('[parsePpto] Phase4: collected '+allItems.length+' items, grandTotal='+grandTotal);
 
-  /* ── Phase 5: if grand total still 0, sum all items ── */
-  if(grandTotal<=0) grandTotal=allItems.reduce((s,it)=>s+it.amt,0);
-
-  // Also try to read explicit total row
-  if(totalRow<rows.length){
-    const tRow=rows[totalRow];
-    for(let c=tRow.length-1;c>=0;c--){
-      const n=toNum(tRow[c]);
-      if(!isNaN(n)&&n>grandTotal*0.5){grandTotal=Math.max(grandTotal,n);break;}
-    }
-  }
-  console.log('[parsePpto] Phase5: final grandTotal='+grandTotal);
-
-  if(grandTotal<=0||allItems.length===0){
-    console.log('[parsePpto] ABORT: no items or zero total');
-    toast('⚠️ No se encontraron ítems con montos en el presupuesto');
+  if(!items.length){
+    toast('⚠️ No se encontraron elementos en el presupuesto. Verifique el formato.');
     return;
   }
 
-  /* ── Phase 6: filter items to cover ≥95% of budget + mínimo 0.5% ── */
-  const minThreshold=0.005*grandTotal; // 0.5% mínimo
-  const sorted=[...allItems].sort((a,b)=>b.amt-a.amt);
-  let coverageAmt=0;
-  const significant=[];
-  
-  // Primero: tomar items hasta cubrir 95%
-  for(const it of sorted){
-    if(it.amt>=minThreshold){
-      significant.push(it);
-      coverageAmt+=it.amt;
-    }
-    if(coverageAmt/grandTotal>=0.95) break;
-  }
-  
-  console.log('[parsePpto] Phase6: collected '+significant.length+' items (≥0.5%) covering '+((coverageAmt/grandTotal)*100).toFixed(1)+'% of budget');
-  if(significant.length===0){
-    console.log('[parsePpto] Phase6: fallback using all items');
-    significant.push(...allItems);
-  }
-
-  /* ── Phase 7: determine project type and build rows ── */
-  // fk = "f_COD_mod_Slot" — extract cod+mod reliably from key
+  // Paso 4: construir newItems según tipo proyecto
   const cod=S.openCodes[S.ci]||'';
   if(!cod){toast('⚠️ No se pudo identificar el proyecto');return;}
   const p=S.allProjects.find(r=>r['Código Proyecto']===cod);
   const isT=p?String(p['Tipo Obra']||'').toLowerCase().includes('tecnif'):true;
   const ik=`inv_${cod}_datos`;
-  console.log('[parsePpto] Phase7: fk='+fk+' cod='+cod+' ik='+ik+' isT='+isT);
 
-  /* ── Phase 7b: deduplicate by description, sum quantities ── */
-  const dedupMap=new Map();
-  for(const it of significant){
-    const key=it.desc.toLowerCase().trim();
-    if(dedupMap.has(key)){
-      const existing=dedupMap.get(key);
-      // Sum quantities (handle numeric strings)
-      const oldCant=parseFloat(existing.cant)||1;
-      const newCant=parseFloat(it.cant)||1;
-      existing.cant=(oldCant+newCant).toString();
-      existing.amt+=it.amt; // also sum amounts for percentage recalc
-    } else {
-      dedupMap.set(key,{...it});
-    }
-  }
-  const dedupItems=Array.from(dedupMap.values());
-  const dedupGrandTotal=dedupItems.reduce((s,it)=>s+it.amt,0);
-  console.log('[parsePpto] Phase7b: deduped '+significant.length+' to '+dedupItems.length+' items');
-
-  const newItems=dedupItems.map(it=>{
-    const pct=((it.amt/dedupGrandTotal)*100).toFixed(1);
+  const newItems=items.map(it=>{
     if(isT){
-      return {elem:it.desc.substring(0,80),mod:'',marc:'',cant:it.cant,ser:'',_pct:pct};
+      return {elem:it.desc.substring(0,80),mod:'',marc:'',cant:it.cant,ser:''};
     } else {
-      return {cant:it.cant,tipo:it.desc.substring(0,80),dim:it.unit?`Unidad: ${it.unit}`:'',coo:'',obs:`${pct}% ppto`,_pct:pct};
+      return {cant:it.cant,tipo:it.desc.substring(0,80),dim:it.unit?`Unidad: ${it.unit}`:'',coo:'',obs:''};
     }
   });
-  console.log('[parsePpto] Phase7: built '+newItems.length+' newItems for inventory');
 
-  /* ── Phase 8: merge or replace ── */
+  // Paso 5: merge o reemplazar
   const existing=S.inv[ik]||[];
-  // Vacío = sin items, o solo el item placeholder vacío
   const isEmpty=existing.length===0||
-    (existing.length===1&&
-     !existing[0].elem&&!existing[0].tipo&&
-     !existing[0].mod&&!existing[0].cant);
+    (existing.length===1&&!existing[0].elem&&!existing[0].tipo&&!existing[0].mod&&!existing[0].cant);
 
   const doLoad=()=>{
     S.inv[ik]=newItems;
     persist();
     renderCurrent();
-    toast(`✅ ${newItems.length} ítems cargados del presupuesto`,4000);
+    toast(`✅ ${newItems.length} elementos cargados del presupuesto`,4000);
   };
 
   if(!isEmpty){
-    // Mostrar confirmación sin usar confirm() nativo (problemático en iOS PWA)
     const fmod=document.getElementById('file-modal');
     document.getElementById('fmod-title').textContent='Inventario existente';
-    document.getElementById('fmod-name').textContent=`Se encontraron ${newItems.length} ítems en el presupuesto. ¿Reemplazar el inventario actual?`;
+    document.getElementById('fmod-name').textContent=`Se encontraron ${newItems.length} elementos en el presupuesto. ¿Reemplazar el inventario actual?`;
     document.getElementById('fmod-ver').style.display='none';
     document.getElementById('fmod-del').style.display='none';
     const repBtn=document.getElementById('fmod-rep');
@@ -3066,6 +2982,8 @@ function extractAndFillInventory(rows, fk){
     doLoad();
   }
 }
+
+
 
 /* ── EXPORTAR / IMPORTAR JSON (sincronización entre dispositivos) ── */
 function exportJSON(){

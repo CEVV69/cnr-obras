@@ -1,7 +1,7 @@
 /* CNR Ñuble PWA — Service Worker
    Version: 202605080001
 */
-const CACHE = 'cnr-202605152222';
+const CACHE = 'cnr-202605152232';
 const ASSETS = [
   './',
   './index.html',
