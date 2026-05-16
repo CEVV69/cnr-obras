@@ -2708,21 +2708,42 @@ function parsePrespuesto(dataURL, fk){
     for(let i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
     const wb=XLSX.read(arr,{type:'array'});
 
-    // Procesar cada hoja independientemente y acumular ítems
-    let allItems=[];
+    // Procesar cada hoja con su propio umbral 1%
+    let allSignificant=[];
+    const descMap=new Map();
     let sheetInfo=[];
+
     wb.SheetNames.forEach(shName=>{
       const ws=wb.Sheets[shName];
       const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
       if(!rows.length)return;
       const items=extractItemsFromRows(rows);
-      sheetInfo.push(`${shName}:${items.length}`);
-      allItems=allItems.concat(items);
+      if(!items.length)return;
+
+      // Filtro 1% por hoja independiente
+      const shTotal=items.reduce((s,it)=>s+(it.subtot||0),0);
+      const threshold=shTotal*0.01;
+      const significant=shTotal>0?items.filter(it=>(it.subtot||0)>=threshold):items;
+
+      sheetInfo.push(`${shName}:${items.length}→${significant.length}`);
+
+      // Consolidar duplicados entre hojas
+      for(const it of significant){
+        const key=it.desc.toLowerCase().substring(0,40);
+        if(descMap.has(key)){
+          const ex=allSignificant[descMap.get(key)];
+          ex.cant=String(parseFloat(ex.cant||1)+parseFloat(it.cant||1));
+          ex.subtot=(ex.subtot||0)+(it.subtot||0);
+        } else {
+          descMap.set(key,allSignificant.length);
+          allSignificant.push({...it});
+        }
+      }
     });
 
-    console.log('[parsePrespuesto] hojas procesadas:',sheetInfo.join(', '));
-    if(!allItems.length){toast('⚠️ Presupuesto vacío');return;}
-    fillInventoryFromItems(allItems, fk);
+    console.log('[parsePrespuesto] hojas:',sheetInfo.join(', '));
+    if(!allSignificant.length){toast('⚠️ Presupuesto vacío');return;}
+    fillInventoryFromItems(allSignificant, fk, true); // true = ya filtrado
   }catch(err){
     console.error('Excel parse error:',err);
     toast('⚠️ Error al leer el Excel de presupuesto');
@@ -2911,7 +2932,7 @@ function extractItemsFromRows(rows){
 }
 
 /* ── CORE: consolida, filtra y guarda en inventario ── */
-function fillInventoryFromItems(items, fk){
+function fillInventoryFromItems(items, fk, alreadyFiltered=false){
   // Consolidar duplicados (misma desc ~40 chars) sumando cantidades y subtotales
   const consolidated=[];
   const descMap=new Map();
@@ -2927,10 +2948,13 @@ function fillInventoryFromItems(items, fk){
     }
   }
 
-  // Filtrar >= 1% del total
-  const grandTotal=consolidated.reduce((s,it)=>s+(it.subtot||0),0);
-  const threshold=grandTotal*0.01;
-  const significant=grandTotal>0?consolidated.filter(it=>(it.subtot||0)>=threshold):consolidated;
+  // Filtrar >= 1% del total (solo si no viene ya filtrado por hoja)
+  let significant=consolidated;
+  if(!alreadyFiltered){
+    const grandTotal=consolidated.reduce((s,it)=>s+(it.subtot||0),0);
+    const threshold=grandTotal*0.01;
+    significant=grandTotal>0?consolidated.filter(it=>(it.subtot||0)>=threshold):consolidated;
+  }
 
   if(!significant.length){
     toast('⚠️ No se encontraron elementos significativos en el presupuesto.');
