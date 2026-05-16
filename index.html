@@ -2708,16 +2708,21 @@ function parsePrespuesto(dataURL, fk){
     for(let i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
     const wb=XLSX.read(arr,{type:'array'});
 
-    // Acumular filas de TODAS las hojas
-    let allRows=[];
+    // Procesar cada hoja independientemente y acumular ítems
+    let allItems=[];
+    let sheetInfo=[];
     wb.SheetNames.forEach(shName=>{
       const ws=wb.Sheets[shName];
       const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
-      allRows=allRows.concat(rows);
+      if(!rows.length)return;
+      const items=extractItemsFromRows(rows);
+      sheetInfo.push(`${shName}:${items.length}`);
+      allItems=allItems.concat(items);
     });
 
-    if(!allRows.length){toast('⚠️ Presupuesto vacío');return;}
-    extractAndFillInventory(allRows, fk);
+    console.log('[parsePrespuesto] hojas procesadas:',sheetInfo.join(', '));
+    if(!allItems.length){toast('⚠️ Presupuesto vacío');return;}
+    fillInventoryFromItems(allItems, fk);
   }catch(err){
     console.error('Excel parse error:',err);
     toast('⚠️ Error al leer el Excel de presupuesto');
@@ -2780,18 +2785,18 @@ async function parsePrespuestoPDF(dataURL, fk){
     
     // Parse text into table-like rows
     const rows=allLines.map(line=>{
-      // Split by multiple spaces, tabs, or common delimiters
       return line.split(/\s{2,}|\t|,(?=\d)/).map(s=>s.trim()).filter(s=>s.length>0);
     });
-    
-    extractAndFillInventory(rows, fk);
+    hideL();
+    const items=extractItemsFromRows(rows);
+    if(!items.length){toast('⚠️ PDF sin contenido detectado. Intente con Excel.', 5000);return;}
+    fillInventoryFromItems(items, fk);
   }catch(err){
     console.error('PDF parse error:',err);
     hideL();
     toast('⚠️ Error PDF: '+err.message);
   }
 }
-
 function extractPDFText(bin){
   // Extract text from PDF binary by finding text streams
   const lines=[];
@@ -2817,30 +2822,21 @@ function extractPDFText(bin){
   return lines.filter(l=>/[a-záéíóúñüA-ZÁÉÍÓÚÑÜ]/.test(l)&&l.length>=4);
 }
 
-/* ── CORE: extract items from rows (used by both Excel and PDF parsers) ── */
-function extractAndFillInventory(rows, fk){
-  // Helpers
+/* ── CORE: extrae ítems de filas (Excel o PDF) ── */
+function extractItemsFromRows(rows){
   const toNum=v=>{if(v===''||v===null||v===undefined)return NaN;const n=parseFloat(String(v).replace(/[^0-9.,-]/g,'').replace(',','.'));return isNaN(n)?NaN:n;};
   const clean=v=>String(v||'').replace(/\s+/g,' ').trim();
   const isGoodDesc=v=>{
     if(!v||v.length<3)return false;
-    // Excluir encabezados, partidas, totales
     const lv=v.toLowerCase();
     const exclude=['total','subtotal','costo unit','cost unit','superficie','precio unit','iva','valor unit','$/h','detalle','presupuesto','item','descripcion','descripción','partida','n°'];
     if(exclude.some(e=>lv.startsWith(e)))return false;
-    // Excluir si es solo número o código (ej "1.1.2")
     if(/^[0-9.\s]+$/.test(v))return false;
     return true;
   };
 
-  /* ── ESTRATEGIA ESTRUCTURAL ──────────────────────────────────
-     Para cada fila, buscar el patrón: texto + cant numérica + precio unit + subtotal
-     Columnas pueden variar, por lo que las detectamos dinámicamente.
-  ── */
-
-  // Paso 1: detectar columnas buscando la fila de encabezado
-  let descCol=-1, unitCol=-1, cantCol=-1, unitPriceCol=-1, subtotalCol=-1;
-  
+  // Detectar columnas desde encabezado
+  let descCol=-1,unitCol=-1,cantCol=-1,unitPriceCol=-1,subtotalCol=-1;
   const descKW=['item','descripcion','descripción','detalle','material','obra','elemento'];
   const unitKW=['unid','unit','u.','gl','m.','m3','m2','kg'];
   const cantKW=['cant','cantidad','n°','num'];
@@ -2865,10 +2861,8 @@ function extractAndFillInventory(rows, fk){
     }
   }
 
-  // Paso 2: si no encontramos header, inferir por posición típica del FT01
-  // FT01: col0=vacio, col1=desc, col2=unidad, col3=cant, col4=precio_unit, col5=subtotal, col6=total_partida
+  // Fallback: inferir por contenido
   if(descCol<0){
-    // Buscar la columna con más texto largo (desc) y columnas numéricas
     const maxCols=rows.slice(0,50).reduce((m,r)=>Math.max(m,(r||[]).length),0);
     let bestDescScore=-1;
     for(let c=0;c<maxCols;c++){
@@ -2879,7 +2873,6 @@ function extractAndFillInventory(rows, fk){
       }
       if(score>bestDescScore){bestDescScore=score;descCol=c;}
     }
-    // Columnas numéricas: buscar cant (menor magnitud) y subtotal (mayor magnitud) a la derecha del desc
     const numCols=[];
     for(let c=descCol+1;c<maxCols;c++){
       let sum=0,cnt=0;
@@ -2891,7 +2884,6 @@ function extractAndFillInventory(rows, fk){
     }
     numCols.sort((a,b)=>a.c-b.c);
     if(numCols.length>=2){
-      // Cant: columna con valores pequeños (< 1000 promedio), Subtotal: columna con valores grandes
       const smallCols=numCols.filter(x=>x.avg<10000);
       const bigCols=numCols.filter(x=>x.avg>=1000);
       cantCol=smallCols.length>0?smallCols[0].c:-1;
@@ -2900,63 +2892,52 @@ function extractAndFillInventory(rows, fk){
     }
   }
 
-  // Paso 3: recopilar ítems válidos
+  // Recopilar ítems válidos
   const items=[];
-  const seenDescs=new Set();
-
   for(let r=0;r<rows.length;r++){
     const row=rows[r]||[];
     const desc=clean(row[descCol]||'');
     if(!isGoodDesc(desc))continue;
-
-    // Validar que tiene al menos cant O subtotal numérico
     const cant=cantCol>=0?toNum(row[cantCol]):NaN;
     const subtot=subtotalCol>=0?toNum(row[subtotalCol]):NaN;
     const uprice=unitPriceCol>=0?toNum(row[unitPriceCol]):NaN;
-
-    // Ítem válido: tiene subtotal O (cantidad Y precio unit)
     const hasNumbers=(!isNaN(subtot)&&subtot>0)||((!isNaN(cant)&&cant>0)&&(!isNaN(uprice)&&uprice>0));
     if(!hasNumbers)continue;
-
-    // Deduplicar por descripción exacta
-    const key=desc.toLowerCase();
-    if(seenDescs.has(key))continue;
-    seenDescs.add(key);
-
     const unit=unitCol>=0?clean(row[unitCol]||''):'';
     const cantStr=!isNaN(cant)&&cant>0?String(cant):'1';
-    items.push({desc,unit,cant:cantStr,subtot:isNaN(subtot)?0:subtot});
+    items.push({desc,unit,cant:cantStr,subtot:isNaN(subtot)?(!isNaN(cant)&&!isNaN(uprice)?cant*uprice:0):subtot});
   }
+  return items;
+}
 
-  if(!items.length){
-    toast('⚠️ No se encontraron elementos en el presupuesto. Verifique el formato.');
-    return;
-  }
-
-  // Consolidar duplicados: misma descripción → sumar cantidades
+/* ── CORE: consolida, filtra y guarda en inventario ── */
+function fillInventoryFromItems(items, fk){
+  // Consolidar duplicados (misma desc ~40 chars) sumando cantidades y subtotales
   const consolidated=[];
   const descMap=new Map();
   for(const it of items){
     const key=it.desc.toLowerCase().substring(0,40);
     if(descMap.has(key)){
-      const existing=consolidated[descMap.get(key)];
-      const sumCant=parseFloat(existing.cant||1)+parseFloat(it.cant||1);
-      existing.cant=String(sumCant);
-      existing.subtot=(existing.subtot||0)+(it.subtot||0);
+      const ex=consolidated[descMap.get(key)];
+      ex.cant=String(parseFloat(ex.cant||1)+parseFloat(it.cant||1));
+      ex.subtot=(ex.subtot||0)+(it.subtot||0);
     } else {
       descMap.set(key,consolidated.length);
       consolidated.push({...it});
     }
   }
 
-  // Filtrar: solo ítems con subtotal >= 1% del total del presupuesto
+  // Filtrar >= 1% del total
   const grandTotal=consolidated.reduce((s,it)=>s+(it.subtot||0),0);
   const threshold=grandTotal*0.01;
-  const significant=grandTotal>0
-    ? consolidated.filter(it=>(it.subtot||0)>=threshold)
-    : consolidated;
+  const significant=grandTotal>0?consolidated.filter(it=>(it.subtot||0)>=threshold):consolidated;
 
-  // Paso 4: construir newItems según tipo proyecto
+  if(!significant.length){
+    toast('⚠️ No se encontraron elementos significativos en el presupuesto.');
+    return;
+  }
+
+  // Construir newItems según tipo proyecto
   const cod=S.openCodes[S.ci]||'';
   if(!cod){toast('⚠️ No se pudo identificar el proyecto');return;}
   const p=S.allProjects.find(r=>r['Código Proyecto']===cod);
@@ -2964,22 +2945,16 @@ function extractAndFillInventory(rows, fk){
   const ik=`inv_${cod}_datos`;
 
   const newItems=significant.map(it=>{
-    if(isT){
-      return {elem:it.desc.substring(0,80),mod:'',marc:'',cant:it.cant,ser:''};
-    } else {
-      return {cant:it.cant,tipo:it.desc.substring(0,80),dim:it.unit?`Unidad: ${it.unit}`:'',coo:'',obs:''};
-    }
+    if(isT){return {elem:it.desc.substring(0,80),mod:'',marc:'',cant:it.cant,ser:''};}
+    else{return {cant:it.cant,tipo:it.desc.substring(0,80),dim:it.unit?`Unidad: ${it.unit}`:'',coo:'',obs:''};}
   });
 
-  // Paso 5: merge o reemplazar
+  // Merge o reemplazar
   const existing=S.inv[ik]||[];
-  const isEmpty=existing.length===0||
-    (existing.length===1&&!existing[0].elem&&!existing[0].tipo&&!existing[0].mod&&!existing[0].cant);
+  const isEmpty=existing.length===0||(existing.length===1&&!existing[0].elem&&!existing[0].tipo&&!existing[0].mod&&!existing[0].cant);
 
   const doLoad=()=>{
-    S.inv[ik]=newItems;
-    persist();
-    renderCurrent();
+    S.inv[ik]=newItems;persist();renderCurrent();
     toast(`✅ ${newItems.length} elementos cargados (≥1% del presupuesto)`,4000);
   };
 
@@ -2994,10 +2969,8 @@ function extractAndFillInventory(rows, fk){
     repBtn.onclick=()=>{closeFileModal();repBtn.textContent='🔄 Reemplazar';document.getElementById('fmod-ver').style.display='';document.getElementById('fmod-del').style.display='';doLoad();};
     document.getElementById('fmod-cls').textContent='Cancelar';
     document.getElementById('fmod-cls').onclick=()=>{
-      closeFileModal();
-      document.getElementById('fmod-cls').textContent='Cerrar';
-      document.getElementById('fmod-ver').style.display='';
-      document.getElementById('fmod-del').style.display='';
+      closeFileModal();document.getElementById('fmod-cls').textContent='Cerrar';
+      document.getElementById('fmod-ver').style.display='';document.getElementById('fmod-del').style.display='';
       repBtn.textContent='🔄 Reemplazar';
     };
     fmod.style.display='flex';
@@ -3006,8 +2979,10 @@ function extractAndFillInventory(rows, fk){
   }
 }
 
-
-
+// Legacy wrapper — mantener compatibilidad si algo lo llama directamente
+function extractAndFillInventory(rows, fk){
+  fillInventoryFromItems(extractItemsFromRows(rows), fk);
+}
 /* ── EXPORTAR / IMPORTAR JSON (sincronización entre dispositivos) ── */
 function exportJSON(){
   save(); // save any pending form data first
