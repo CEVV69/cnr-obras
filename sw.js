@@ -1,10 +1,6 @@
-/* CNR Ñuble PWA — Service Worker
-   Version: 202605080001
-*/
-const CACHE = 'cnr-202605152232';
+/* CNR Ñuble PWA — Service Worker v85 */
+const CACHE = 'cnr-v85-20260515';
 const ASSETS = [
-  './',
-  './index.html',
   './manifest.json',
   './icon-192.png',
   './icon-512.png',
@@ -16,12 +12,14 @@ const ASSETS = [
   'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js',
 ];
 
-// Archivos que siempre deben ir a red primero (datos dinámicos)
-const NETWORK_FIRST = ['proyectos.json'];
+// Network-first: index.html y proyectos.json siempre se buscan en red primero
+const NETWORK_FIRST = ['index.html', './', 'proyectos.json'];
 
 self.addEventListener('install', e => {
   self.skipWaiting();
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));
+  e.waitUntil(
+    caches.open(CACHE).then(c => c.addAll(ASSETS))
+  );
 });
 
 self.addEventListener('activate', e => {
@@ -34,20 +32,22 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   const url = e.request.url;
+  const isNetworkFirst = NETWORK_FIRST.some(f => url.endsWith(f) || url.endsWith('/'));
 
-  // Network-first para proyectos.json
-  if (NETWORK_FIRST.some(f => url.includes(f))) {
+  if (isNetworkFirst) {
+    // Network-first: busca en red, fallback a caché
     e.respondWith(
-      fetch(e.request).then(res => {
-        const clone = res.clone();
-        caches.open(CACHE).then(c => c.put(e.request, clone));
+      fetch(e.request, {cache: 'no-cache'}).then(res => {
+        if (res && res.status === 200) {
+          caches.open(CACHE).then(c => c.put(e.request, res.clone()));
+        }
         return res;
       }).catch(() => caches.match(e.request))
     );
     return;
   }
 
-  // Cache-first para todo lo demás
+  // Cache-first para librerías y assets estáticos
   e.respondWith(
     caches.match(e.request).then(cached => {
       if (cached) return cached;
