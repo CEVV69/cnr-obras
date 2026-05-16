@@ -2757,61 +2757,48 @@ async function parsePrespuestoPDF(dataURL, fk){
     const b64=dataURL.split(',')[1];
     const uint8Array=Uint8Array.from(atob(b64),c=>c.charCodeAt(0));
     const pdf=await pdfjsLib.getDocument({data:uint8Array}).promise;
-    const allLines=[];
+
+    // Recopilar todos los ítems de texto con posición X,Y de todas las páginas
+    const allTextItems=[];
     let totalItems=0;
-    
+
     for(let i=1;i<=Math.min(pdf.numPages,100);i++){
       const page=await pdf.getPage(i);
       const text=await page.getTextContent();
+      const vp=page.getViewport({scale:1});
       totalItems+=text.items.length;
-      
-      // Group text items by Y position (lines)
-      const lineMap=new Map();
       text.items.forEach(item=>{
-        if(!item.str||item.str.trim().length===0) return;
-        const y=Math.round(item.y);
-        if(!lineMap.has(y)) lineMap.set(y,[]);
-        lineMap.get(y).push({x:item.x,str:item.str});
+        if(!item.str||!item.str.trim())return;
+        // Normalizar Y a página (invertir eje)
+        const y=Math.round((vp.height-item.transform[5])/5)*5; // agrupar por ~5pt
+        allTextItems.push({x:item.x,y:y+(i-1)*10000,str:item.str.trim(),page:i});
       });
-      
-      // Sort lines by Y (descending) and build text
-      Array.from(lineMap.entries())
-        .sort((a,b)=>b[0]-a[0])
-        .forEach(([y,items])=>{
-          items.sort((a,b)=>a.x-b.x);
-          const line=items.map(it=>it.str).join(' ');
-          if(line.trim().length>0) allLines.push(line);
-        });
     }
-    hideL();
-    
-    console.log('[parsePrespuestoPDF] pages='+pdf.numPages+' totalItems='+totalItems+' extractedLines='+allLines.length);
-    
-    // Detect scanned PDF (no extractable text)
+
     if(totalItems===0){
-      toast('⚠️ PDF escaneado (sin texto extraíble). Use Excel o OCR.', 6000);
-      return;
+      hideL();toast('⚠️ PDF escaneado (sin texto extraíble). Use Excel.',6000);return;
     }
-    
-    if(!allLines.length){
-      toast('⚠️ PDF sin contenido detectado. Intente con Excel.', 5000);
-      return;
-    }
-    
-    const fullText=allLines.join('\n');
-    if(fullText.length<10){
-      toast('⚠️ PDF vacío o ilegible');
-      return;
-    }
-    
-    // Parse text into table-like rows
-    const rows=allLines.map(line=>{
-      return line.split(/\s{2,}|\t|,(?=\d)/).map(s=>s.trim()).filter(s=>s.length>0);
+
+    // Agrupar por fila (mismo Y)
+    const rowMap=new Map();
+    allTextItems.forEach(it=>{
+      if(!rowMap.has(it.y))rowMap.set(it.y,[]);
+      rowMap.get(it.y).push(it);
     });
+
+    // Construir filas ordenadas por X
+    const rows=Array.from(rowMap.entries())
+      .sort((a,b)=>a[0]-b[0])
+      .map(([y,its])=>its.sort((a,b)=>a.x-b.x).map(it=>it.str));
+
     hideL();
+
+    if(!rows.length){toast('⚠️ PDF sin contenido legible.',5000);return;}
+
+    // Para PDF aplicar filtro por hoja no aplica — usar fillInventoryFromItems normal
     const items=extractItemsFromRows(rows);
-    if(!items.length){toast('⚠️ PDF sin contenido detectado. Intente con Excel.', 5000);return;}
-    fillInventoryFromItems(items, fk);
+    if(!items.length){toast('⚠️ No se encontraron elementos en el PDF. Verifique el formato.',5000);return;}
+    fillInventoryFromItems(items, fk); // filtro 1% sobre total del PDF
   }catch(err){
     console.error('PDF parse error:',err);
     hideL();
