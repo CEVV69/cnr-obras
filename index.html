@@ -2933,6 +2933,29 @@ function extractAndFillInventory(rows, fk){
     return;
   }
 
+  // Consolidar duplicados: misma descripción → sumar cantidades
+  const consolidated=[];
+  const descMap=new Map();
+  for(const it of items){
+    const key=it.desc.toLowerCase().substring(0,40);
+    if(descMap.has(key)){
+      const existing=consolidated[descMap.get(key)];
+      const sumCant=parseFloat(existing.cant||1)+parseFloat(it.cant||1);
+      existing.cant=String(sumCant);
+      existing.subtot=(existing.subtot||0)+(it.subtot||0);
+    } else {
+      descMap.set(key,consolidated.length);
+      consolidated.push({...it});
+    }
+  }
+
+  // Filtrar: solo ítems con subtotal >= 1% del total del presupuesto
+  const grandTotal=consolidated.reduce((s,it)=>s+(it.subtot||0),0);
+  const threshold=grandTotal*0.01;
+  const significant=grandTotal>0
+    ? consolidated.filter(it=>(it.subtot||0)>=threshold)
+    : consolidated;
+
   // Paso 4: construir newItems según tipo proyecto
   const cod=S.openCodes[S.ci]||'';
   if(!cod){toast('⚠️ No se pudo identificar el proyecto');return;}
@@ -2940,7 +2963,7 @@ function extractAndFillInventory(rows, fk){
   const isT=p?String(p['Tipo Obra']||'').toLowerCase().includes('tecnif'):true;
   const ik=`inv_${cod}_datos`;
 
-  const newItems=items.map(it=>{
+  const newItems=significant.map(it=>{
     if(isT){
       return {elem:it.desc.substring(0,80),mod:'',marc:'',cant:it.cant,ser:''};
     } else {
@@ -2957,7 +2980,7 @@ function extractAndFillInventory(rows, fk){
     S.inv[ik]=newItems;
     persist();
     renderCurrent();
-    toast(`✅ ${newItems.length} elementos cargados del presupuesto`,4000);
+    toast(`✅ ${newItems.length} elementos cargados (≥1% del presupuesto)`,4000);
   };
 
   if(!isEmpty){
