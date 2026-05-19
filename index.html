@@ -2437,7 +2437,20 @@ async function syncBajar(){
     if(res.status===404){st.textContent='No hay datos en la nube aún';toast('⚠️ No hay datos guardados para '+sup);return;}
     if(res.status!==200){st.textContent='❌ Error '+res.status;toast('❌ Error '+res.status);return;}
     const d=await res.json();
-    const payload=JSON.parse(decodeURIComponent(atob(d.content.replace(/[\s\r\n]/g,''))));
+    const raw=d.content.replace(/[\s\r\n]/g,'');
+    console.log('[syncBajar] content length:',raw.length,'first50:',raw.substring(0,50));
+    let payload;
+    try{
+      payload=JSON.parse(decodeURIComponent(atob(raw)));
+    }catch(e1){
+      console.log('[syncBajar] decode method 1 failed:',e1.message,', trying method 2');
+      try{
+        payload=JSON.parse(decodeURIComponent(escape(atob(raw))));
+      }catch(e2){
+        console.log('[syncBajar] decode method 2 failed:',e2.message,', trying raw JSON');
+        payload=JSON.parse(atob(raw));
+      }
+    }
     if(payload.allProjects)S.allProjects=payload.allProjects;
     if(payload.openCodes)S.openCodes=payload.openCodes;
     const mo=(t,s)=>{for(const k in s)t[k]=s[k];};
