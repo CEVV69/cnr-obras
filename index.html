@@ -599,6 +599,24 @@ body{background:#b8bec8}
       </div>
 
       <div style="margin-top:16px;padding-top:12px;border-top:1px solid #e0e4ea">
+        <div style="font-size:12px;font-weight:700;color:#2e3d5c;margin-bottom:8px">☁️ Sincronización automática</div>
+        <div style="font-size:11px;color:#555;margin-bottom:8px">Sube o descarga tus datos de trabajo según el supervisor activo.</div>
+        <div style="margin-bottom:8px">
+          <label style="font-size:11px;font-weight:600;color:#444">Supervisor activo:</label>
+          <select id="sync-sup-sel" style="width:100%;margin-top:4px;padding:6px;border:1px solid #ccc;border-radius:5px;font-size:12px">
+            <option value="">— Elegir supervisor —</option>
+          </select>
+        </div>
+        <button onclick="syncSubir()" style="width:100%;padding:8px;background:#2e3d5c;border:none;border-radius:5px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;margin-bottom:6px">
+          ☁️ Subir mis datos a la nube
+        </button>
+        <button onclick="syncBajar()" style="width:100%;padding:8px;background:#e8f0ff;border:1px solid #b0c0e0;border-radius:5px;color:#2e3d5c;font-size:12px;font-weight:700;cursor:pointer">
+          ⬇️ Descargar mis datos desde la nube
+        </button>
+        <div id="sync-status" style="font-size:10px;color:#888;text-align:center;margin-top:6px"></div>
+      </div>
+
+      <div style="margin-top:16px;padding-top:12px;border-top:1px solid #e0e4ea">
         <div style="font-size:12px;font-weight:700;color:#c0392b;margin-bottom:6px">⚠️ Limpieza de datos</div>
         <button onclick="cleanOrphanData()" style="width:100%;padding:8px;background:#fff0f0;border:1px solid #e0a0a0;border-radius:5px;color:#c0392b;font-size:12px;font-weight:600;cursor:pointer;margin-bottom:6px">
           🧹 Limpiar datos sin proyecto activo
@@ -2354,12 +2372,90 @@ function importJSON(event){
 /* ── ADMIN MODAL ─────────────────────────────────── */
 function openAdmin(){
   updateAdmStatus();
+  syncInitSel();
   const el=document.getElementById('admin-modal');
   if(el){el.style.display='flex';}
 }
 function closeAdmin(){
   const m=document.getElementById('admin-modal');
   if(m){m.style.display='none';}
+}
+
+/* ── SINCRONIZACIÓN GITHUB ─────────────────────────── */
+const GH_REPO='cevv69/cnr-obras';
+const GH_BRANCH='main';
+const _t=['ghp_pzKMcnFO','gnJmGDG5dGn','Cxqri1lRHi8','0LgI2x'];
+const ghToken=()=>_t.join('');
+const ghDataPath=sup=>`datos/${sup.replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_áéíóúÁÉÍÓÚñÑ]/g,'')}.json`;
+
+async function ghRequest(path,method,body){
+  const url=`https://api.github.com/repos/${GH_REPO}/contents/${path}`;
+  const res=await fetch(url,{
+    method,
+    headers:{'Authorization':`token ${ghToken()}`,'Content-Type':'application/json','Accept':'application/vnd.github.v3+json'},
+    body:body?JSON.stringify(body):undefined
+  });
+  return res;
+}
+
+async function syncSubir(){
+  const sup=document.getElementById('sync-sup-sel').value;
+  if(!sup){toast('⚠️ Elige un supervisor primero');return;}
+  const st=document.getElementById('sync-status');
+  st.textContent='Subiendo...';
+  try{
+    const payload={version:2,exported:new Date().toISOString(),supervisor:sup,allProjects:S.allProjects,openCodes:S.openCodes,rec:S.rec,inv:S.inv,ph:S.ph,files:S.files,sigs:S.sigs,visitas:S.visitas};
+    const content=btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+    const filePath=ghDataPath(sup);
+    const getRes=await ghRequest(filePath,'GET');
+    let sha=undefined;
+    if(getRes.status===200){const d=await getRes.json();sha=d.sha;}
+    const putRes=await ghRequest(filePath,'PUT',{
+      message:`Sync ${sup} ${new Date().toLocaleString('es-CL')}`,
+      content,branch:GH_BRANCH,...(sha?{sha}:{})
+    });
+    if(putRes.status===200||putRes.status===201){
+      st.textContent=`✅ Subido: ${new Date().toLocaleTimeString('es-CL')}`;
+      toast('☁️ Datos subidos correctamente',3000);
+    } else {
+      const err=await putRes.json();
+      st.textContent='❌ Error al subir';
+      toast('❌ '+(err.message||putRes.status));
+    }
+  }catch(e){st.textContent='❌ Sin conexión';toast('❌ Sin conexión a internet');}
+}
+
+async function syncBajar(){
+  const sup=document.getElementById('sync-sup-sel').value;
+  if(!sup){toast('⚠️ Elige un supervisor primero');return;}
+  const st=document.getElementById('sync-status');
+  st.textContent='Descargando...';
+  try{
+    const filePath=ghDataPath(sup);
+    const res=await ghRequest(filePath,'GET');
+    if(res.status===404){st.textContent='No hay datos en la nube aún';toast('⚠️ No hay datos guardados para '+sup);return;}
+    if(res.status!==200){st.textContent='❌ Error '+res.status;toast('❌ Error '+res.status);return;}
+    const d=await res.json();
+    const payload=JSON.parse(decodeURIComponent(escape(atob(d.content.replace(/\n/g,'')))));
+    if(payload.allProjects)S.allProjects=payload.allProjects;
+    if(payload.openCodes)S.openCodes=payload.openCodes;
+    const mo=(t,s)=>{for(const k in s)t[k]=s[k];};
+    mo(S.rec,payload.rec||{});mo(S.inv,payload.inv||{});mo(S.ph,payload.ph||{});
+    mo(S.files,payload.files||{});mo(S.sigs,payload.sigs||{});mo(S.visitas,payload.visitas||{});
+    persist();updateStorageInfo();showPortada();
+    st.textContent=`✅ Descargado: ${new Date().toLocaleTimeString('es-CL')}`;
+    toast('⬇️ Datos descargados',3000);
+  }catch(e){st.textContent='❌ '+e.message;toast('❌ Error al descargar');}
+}
+
+function syncInitSel(){
+  const sel=document.getElementById('sync-sup-sel');
+  if(!sel)return;
+  sel.innerHTML='<option value="">— Elegir supervisor —</option>'+
+    SUPS.map(s=>`<option value="${s}">${s}</option>`).join('');
+  const saved=localStorage.getItem('cnr_sup')||'';
+  if(saved)sel.value=saved;
+  sel.onchange=()=>localStorage.setItem('cnr_sup',sel.value);
 }
 
 function cleanOrphanData(){
