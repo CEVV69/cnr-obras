@@ -439,8 +439,8 @@ body{background:#b8bec8}
 
   <!-- HEADER -->
   <div id="hdr">
-    <div class="hico hico-export" id="btn-export-proj" onclick="exportProject()" title="Exportar proyecto" style="display:none"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="14" rx="2"/><circle cx="8" cy="16" r="2"/><circle cx="16" cy="16" r="2"/><path d="M6 6V4h12v2"/><line x1="10" y1="16" x2="14" y2="16"/><line x1="2" y1="11" x2="22" y2="11"/></svg></div>
-    <div class="hico hico-import" id="btn-import-proj" onclick="importProject()" title="Importar proyecto" style="display:none"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></div>
+    <div class="hico hico-export" id="btn-export-proj" onclick="openSyncModal('subir')" title="Subir a la nube" style="display:none"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="14" rx="2"/><circle cx="8" cy="16" r="2"/><circle cx="16" cy="16" r="2"/><path d="M6 6V4h12v2"/><line x1="10" y1="16" x2="14" y2="16"/><line x1="2" y1="11" x2="22" y2="11"/></svg></div>
+    <div class="hico hico-import" id="btn-import-proj" onclick="openSyncModal('bajar')" title="Descargar de la nube" style="display:none"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></div>
     <div class="htitle" style="flex:1;text-align:center">
       <div class="t1" id="hdr-title" style="display:none"></div>
       <div class="t2" id="hdr-subtitle" style="display:none"></div>
@@ -599,24 +599,6 @@ body{background:#b8bec8}
       </div>
 
       <div style="margin-top:16px;padding-top:12px;border-top:1px solid #e0e4ea">
-        <div style="font-size:12px;font-weight:700;color:#2e3d5c;margin-bottom:8px">☁️ Sincronización automática</div>
-        <div style="font-size:11px;color:#555;margin-bottom:8px">Sube o descarga tus datos de trabajo según el supervisor activo.</div>
-        <div style="margin-bottom:8px">
-          <label style="font-size:11px;font-weight:600;color:#444">Supervisor activo:</label>
-          <select id="sync-sup-sel" style="width:100%;margin-top:4px;padding:6px;border:1px solid #ccc;border-radius:5px;font-size:12px">
-            <option value="">— Elegir supervisor —</option>
-          </select>
-        </div>
-        <button onclick="syncSubir()" style="width:100%;padding:8px;background:#2e3d5c;border:none;border-radius:5px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;margin-bottom:6px">
-          ☁️ Subir mis datos a la nube
-        </button>
-        <button onclick="syncBajar()" style="width:100%;padding:8px;background:#e8f0ff;border:1px solid #b0c0e0;border-radius:5px;color:#2e3d5c;font-size:12px;font-weight:700;cursor:pointer">
-          ⬇️ Descargar mis datos desde la nube
-        </button>
-        <div id="sync-status" style="font-size:10px;color:#888;text-align:center;margin-top:6px"></div>
-      </div>
-
-      <div style="margin-top:16px;padding-top:12px;border-top:1px solid #e0e4ea">
         <div style="font-size:12px;font-weight:700;color:#c0392b;margin-bottom:6px">⚠️ Limpieza de datos</div>
         <button onclick="cleanOrphanData()" style="width:100%;padding:8px;background:#fff0f0;border:1px solid #e0a0a0;border-radius:5px;color:#c0392b;font-size:12px;font-weight:600;cursor:pointer;margin-bottom:6px">
           🧹 Limpiar datos sin proyecto activo
@@ -626,6 +608,20 @@ body{background:#b8bec8}
         </button>
       </div>
 
+    </div>
+  </div>
+</div>
+
+<!-- SYNC MODAL -->
+<div id="sync-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:3000;align-items:center;justify-content:center;padding:20px">
+  <div style="background:#fff;border-radius:10px;width:100%;max-width:300px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.3)">
+    <div id="sync-modal-title" style="background:linear-gradient(90deg,#2e3d5c,#4a5878);color:#fff;padding:12px 16px;font-size:13px;font-weight:700">☁️ Sincronizar datos</div>
+    <div style="padding:16px">
+      <div style="font-size:11px;font-weight:600;color:#444;margin-bottom:6px">Supervisor:</div>
+      <select id="sync-modal-sup" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:6px;font-size:13px;margin-bottom:14px"></select>
+      <button id="sync-modal-btn" style="width:100%;padding:10px;background:#2e3d5c;border:none;border-radius:6px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:8px"></button>
+      <div id="sync-modal-status" style="font-size:11px;color:#888;text-align:center;margin-bottom:8px"></div>
+      <button onclick="document.getElementById('sync-modal').style.display='none'" style="width:100%;padding:8px;background:#f0f0f0;border:none;border-radius:6px;color:#555;font-size:12px;cursor:pointer">Cerrar</button>
     </div>
   </div>
 </div>
@@ -2381,27 +2377,37 @@ function closeAdmin(){
   if(m){m.style.display='none';}
 }
 
-/* ── SINCRONIZACIÓN GITHUB ─────────────────────────── */
-const GH_REPO='cevv69/cnr-obras';
-const GH_BRANCH='main';
-const _t=['ghp_pzKMcnFO','gnJmGDG5dGn','Cxqri1lRHi8','0LgI2x'];
-const ghToken=()=>_t.join('');
-const ghDataPath=sup=>`datos/${sup.replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_áéíóúÁÉÍÓÚñÑ]/g,'')}.json`;
-
-async function ghRequest(path,method,body){
-  const url=`https://api.github.com/repos/${GH_REPO}/contents/${path}`;
-  const res=await fetch(url,{
-    method,
-    headers:{'Authorization':`token ${ghToken()}`,'Content-Type':'application/json','Accept':'application/vnd.github.v3+json'},
-    body:body?JSON.stringify(body):undefined
-  });
-  return res;
+function openSyncModal(accion){
+  const m=document.getElementById('sync-modal');
+  const sel=document.getElementById('sync-modal-sup');
+  const btn=document.getElementById('sync-modal-btn');
+  const st=document.getElementById('sync-modal-status');
+  const title=document.getElementById('sync-modal-title');
+  // Poblar supervisor
+  sel.innerHTML='<option value="">— Elegir supervisor —</option>'+
+    SUPS.map(s=>`<option value="${s}">${s}</option>`).join('');
+  const saved=localStorage.getItem('cnr_sup')||'';
+  if(saved)sel.value=saved;
+  sel.onchange=()=>localStorage.setItem('cnr_sup',sel.value);
+  st.textContent='';
+  if(accion==='subir'){
+    title.textContent='☁️ Subir mis datos';
+    btn.textContent='☁️ Subir a la nube';
+    btn.style.background='#2e3d5c';
+    btn.onclick=()=>syncSubir(sel,st);
+  } else {
+    title.textContent='⬇️ Descargar mis datos';
+    btn.textContent='⬇️ Descargar de la nube';
+    btn.style.background='#1a7a3a';
+    btn.onclick=()=>syncBajar(sel,st);
+  }
+  m.style.display='flex';
 }
 
-async function syncSubir(){
-  const sup=document.getElementById('sync-sup-sel').value;
+async function syncSubir(sel,st){
+  const sup=sel?sel.value:document.getElementById('sync-modal-sup').value;
   if(!sup){toast('⚠️ Elige un supervisor primero');return;}
-  const st=document.getElementById('sync-status');
+  if(!st)st=document.getElementById('sync-modal-status');
   st.textContent='Subiendo...';
   try{
     const payload={version:2,exported:new Date().toISOString(),supervisor:sup,allProjects:S.allProjects,openCodes:S.openCodes,rec:S.rec,inv:S.inv,ph:S.ph,files:S.files,sigs:S.sigs,visitas:S.visitas};
@@ -2426,32 +2432,29 @@ async function syncSubir(){
   }catch(e){st.textContent='❌ Sin conexión';toast('❌ Sin conexión a internet');}
 }
 
-async function syncBajar(){
-  const sup=document.getElementById('sync-sup-sel').value;
+async function syncBajar(sel,st){
+  const sup=sel?sel.value:document.getElementById('sync-modal-sup').value;
   if(!sup){toast('⚠️ Elige un supervisor primero');return;}
-  const st=document.getElementById('sync-status');
+  if(!st)st=document.getElementById('sync-modal-status');
   st.textContent='Descargando...';
   try{
     const filePath=ghDataPath(sup);
     const res=await ghRequest(filePath,'GET');
-    if(res.status===404){st.textContent='No hay datos en la nube aún';toast('⚠️ No hay datos guardados para '+sup);return;}
+    if(res.status===404){st.textContent='No hay datos en la nube aún';toast('⚠️ No hay datos para '+sup);return;}
     if(res.status!==200){st.textContent='❌ Error '+res.status;toast('❌ Error '+res.status);return;}
     const d=await res.json();
     let payload;
-    if(d.content && d.content.trim().length>0){
-      // Archivo pequeño: viene en base64 directo
+    if(d.content&&d.content.trim().length>0){
       const raw=d.content.replace(/[\s\r\n]/g,'');
       try{payload=JSON.parse(decodeURIComponent(atob(raw)));}
       catch(e){try{payload=JSON.parse(decodeURIComponent(escape(atob(raw))));}
       catch(e2){payload=JSON.parse(atob(raw));}}
     } else if(d.download_url){
-      // Archivo grande: descargar directamente
       st.textContent='Descargando (archivo grande)...';
       const dlRes=await fetch(d.download_url+'?t='+Date.now());
       payload=await dlRes.json();
     } else {
-      st.textContent='❌ Archivo vacío en la nube';
-      toast('❌ No se pudo leer el archivo');return;
+      st.textContent='❌ Archivo vacío';toast('❌ No se pudo leer el archivo');return;
     }
     if(payload.allProjects)S.allProjects=payload.allProjects;
     if(payload.openCodes)S.openCodes=payload.openCodes;
@@ -2459,653 +2462,33 @@ async function syncBajar(){
     mo(S.rec,payload.rec||{});mo(S.inv,payload.inv||{});mo(S.ph,payload.ph||{});
     mo(S.files,payload.files||{});mo(S.sigs,payload.sigs||{});mo(S.visitas,payload.visitas||{});
     persist();updateStorageInfo();showPortada();
+    document.getElementById('sync-modal').style.display='none';
     st.textContent=`✅ Descargado: ${new Date().toLocaleTimeString('es-CL')}`;
     toast('⬇️ Datos descargados',3000);
   }catch(e){st.textContent='❌ '+e.message;toast('❌ Error al descargar');}
 }
 
 function syncInitSel(){
-  const sel=document.getElementById('sync-sup-sel');
-  if(!sel)return;
-  sel.innerHTML='<option value="">— Elegir supervisor —</option>'+
-    SUPS.map(s=>`<option value="${s}">${s}</option>`).join('');
-  const saved=localStorage.getItem('cnr_sup')||'';
-  if(saved)sel.value=saved;
-  sel.onchange=()=>localStorage.setItem('cnr_sup',sel.value);
-}
-
-function cleanOrphanData(){
-  // Borra datos de proyectos que ya no están en openCodes
-  const active=new Set(S.openCodes);
-  let count=0;
-  const clean=(obj,keyFn)=>{for(const k of Object.keys(obj)){if(!active.has(keyFn(k))){delete obj[k];count++;}}};
-  clean(S.rec,   k=>k.split('_')[0]);
-  clean(S.ph,    k=>k.replace(/^ph_/,'').split('_')[0]);
-  clean(S.sigs,  k=>k.split('_')[0]);
-  clean(S.inv,   k=>k.replace(/^inv_/,'').split('_')[0]);
-  clean(S.files, k=>k.replace(/^f_/,'').split('_')[0]);
-  for(const k of Object.keys(S.visitas)){if(!active.has(k))delete S.visitas[k];}
-  persist();
-  updateStorageInfo();
-  toast(`🧹 ${count} entradas eliminadas`, 3000);
-}
-
-function clearAllData(){
-  if(!confirm('¿Borrar TODOS los datos, proyectos y fotos?\n\nEsta acción no se puede deshacer.'))return;
-  S.openCodes=[];S.ci=0;S.mod='recepcion';
-  S.rec={};S.inv={};S.ph={};S.files={};S.sigs={};S.visitas={};
-  persist();
-  showPortada();
-  updateStorageInfo();
-  toast('🗑️ Todos los datos eliminados', 3000);
+  // ya no se usa en Ajustes — mantener por compatibilidad
 }
 
 
+const GH_REPO='cevv69/cnr-obras';
+const GH_BRANCH='main';
+const _t=['ghp_pzKMcnFO','gnJmGDG5dGn','Cxqri1lRHi8','0LgI2x'];
+const ghToken=()=>_t.join('');
+const ghDataPath=sup=>`datos/${sup.replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_áéíóúÁÉÍÓÚñÑ]/g,'')}.json`;
 
-function updateAdmStatus(){
-  const el=document.getElementById('adm-status');
-  const btn=document.getElementById('btn-generar-json');
-  if(!el)return;
-  const n=S.allProjects.length;
-  const phCount=Object.values(S.ph).reduce((a,arr)=>a+(arr?.length||0),0);
-  try{
-    const kb=Math.round(JSON.stringify(S).length*0.75/1024);
-    const mb=(kb/1024).toFixed(1);
-    if(n>0){
-      el.className='adm-status';
-      el.innerHTML=`✅ <strong>${n} proyectos</strong> cargados · ${phCount} fotos · ${mb} MB usados<br>
-        <span style="font-size:10px;color:#555">Almacenamiento: IndexedDB (~500 MB disponibles)</span>`;
-      if(btn)btn.disabled=false;
-      const delBtn=document.getElementById('btn-del-excel');
-      if(delBtn)delBtn.style.display='block';
-    } else {
-      el.className='adm-status empty';
-      el.innerHTML='⚠️ Sin proyectos cargados. Cargue el Excel de proyectos.';
-      if(btn)btn.disabled=true;
-      const delBtn2=document.getElementById('btn-del-excel');
-      if(delBtn2)delBtn2.style.display='none';
-    }
-  }catch(e){el.textContent='—';}
-  // Update xl-zone style
-  const zone=document.getElementById('adm-xl-zone');
-  const sub=document.getElementById('xl-sub');
-  if(zone&&sub){
-    if(n>0){
-      zone.classList.add('loaded');
-      sub.textContent=`✅ ${n} proyectos cargados`;
-    } else {
-      zone.classList.remove('loaded');
-      sub.textContent='Toque para seleccionar el archivo';
-    }
-  }
-}
-
-
-/* ── ELIMINAR EXCEL ── */
-function eliminarExcel(){
-  if(!S.allProjects.length){toast('No hay Excel cargado');return;}
-  if(!confirm(`¿Eliminar los ${S.allProjects.length} proyectos cargados?\n\nLos datos de formularios y fotos se conservan.\n[OK] = Eliminar`)) return;
-  S.allProjects=[];
-  S.openCodes=[];
-  S.ci=0;
-  persist();
-  updateAdmStatus();
-  updateStorageInfo();
-  showPortada();
-  toast('🗑️ Excel eliminado. Cargue uno nuevo.');
-}
-
-/* ── GENERATE proyectos.json FOR GITHUB ── */
-function generarProyectosJSON(){
-  if(!S.allProjects.length){toast('Sin proyectos para exportar');return;}
-  const ts=new Date().toISOString();
-  S.proyectosTS=ts; // store local timestamp too
-  persist();
-  const payload={
-    version:2,
-    generated: ts,
-    note:'Generado por CNR Ñuble PWA. Subir a GitHub junto con index.html.',
-    projects: S.allProjects
-  };
-  const json=JSON.stringify(payload,null,2);
-  const blob=new Blob([json],{type:'application/json;charset=utf-8'});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');
-  a.href=url; a.download='proyectos.json';
-  document.body.appendChild(a); a.click();
-  document.body.removeChild(a);
-  setTimeout(()=>URL.revokeObjectURL(url),2000);
-  toast('📦 proyectos.json descargado — súbalo a GitHub',4000);
-}
-
-/* ── AUTO-SYNC proyectos.json FROM GITHUB ────────────────────
-   Strategy:
-   - Always fetch proyectos.json (with cache:no-cache)
-   - Compare 'generated' timestamp with locally stored one
-   - If remote is newer → update automatically + notify user
-   - If user has no projects at all → load silently
-   ─────────────────────────────────────────────────────────── */
-async function fetchProyectosRemoto(){
-  if(!location.protocol.startsWith('http')) return;
-  try{
-    const res=await fetch('./proyectos.json',{cache:'no-cache'});
-    if(!res.ok) return; // file doesn't exist yet in repo — that's fine
-    const data=await res.json();
-    if(!data.projects||!data.projects.length) return;
-
-    const remoteTS  = data.generated||'';
-    const localTS   = S.proyectosTS||'';
-    const hasLocal  = S.allProjects.length>0;
-    const isNewer   = !localTS||(remoteTS>localTS);
-
-    if(!hasLocal){
-      // First run: load silently
-      S.allProjects  = data.projects;
-      S.proyectosTS  = remoteTS;
-      persist();
-      updateAdmStatus();
-      updateStorageInfo();
-      const sub=document.getElementById('xl-sub');
-      const zone=document.getElementById('adm-xl-zone');
-      if(sub) sub.textContent=`✅ ${data.projects.length} proyectos cargados`;
-      if(zone) zone.classList.add('loaded');
-      toast(`✅ ${data.projects.length} proyectos cargados automáticamente`,3000);
-
-    } else if(isNewer){
-      // Newer version available → auto-update without asking
-      const prev=S.allProjects.length;
-      S.allProjects  = data.projects;
-      S.proyectosTS  = remoteTS;
-      persist();
-      updateAdmStatus();
-      updateStorageInfo();
-      const sub=document.getElementById('xl-sub');
-      if(sub) sub.textContent=`✅ ${data.projects.length} proyectos cargados`;
-      if(data.projects.length!==prev){
-        toast(`🔄 Lista de proyectos actualizada: ${data.projects.length} proyectos`,4000);
-      }
-    }
-    // If same version → do nothing (user's local Excel is current)
-  }catch(e){
-    // Silently ignore network errors — app works offline
-  }
-}
-
-
-
-/* ── EXPORT/IMPORT PROJECT ONLY ──────────────────── */
-function exportProject(){
-  save();
-  const cod=S.openCodes[S.ci];
-  if(!cod){toast('⚠️ Sin proyecto seleccionado');return;}
-  const p=S.allProjects.find(r=>r['Código Proyecto']===cod);
-  if(!p){toast('⚠️ Proyecto no encontrado');return;}
-  const payload={version:2,exported: new Date().toISOString(),deviceNote:'Exportado desde CNR Ñuble PWA (proyecto único)',allProjects: [p],openCodes: [cod],ci: 0,mod: S.mod,rec: Object.fromEntries(Object.entries(S.rec).filter(([k])=>k.startsWith(cod+'_'))),inv: Object.fromEntries(Object.entries(S.inv).filter(([k])=>k.startsWith('inv_'+cod))),ph: Object.fromEntries(Object.entries(S.ph).filter(([k])=>k.startsWith('ph_'+cod))),files: Object.fromEntries(Object.entries(S.files).filter(([k])=>k.startsWith('f_'+cod))),sigs: Object.fromEntries(Object.entries(S.sigs).filter(([k])=>k.startsWith('sig_'+cod)))};
-  const json=JSON.stringify(payload,null,2);
-  const blob=new Blob([json],{type:'application/json;charset=utf-8'});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');
-  const ts=new Date().toISOString().slice(0,10);
-  a.href=url;
-  a.download=`CNR_proyecto_${cod}_${ts}.json`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  setTimeout(()=>URL.revokeObjectURL(url),2000);
-  toast('💾 Proyecto exportado',3000);
-}
-function importProject(){
-  const inp=document.createElement('input');
-  inp.type='file';
-  inp.accept='.json';
-  inp.onchange=e=>{
-    const file=e.target.files[0];
-    if(!file)return;
-    const fr=new FileReader();
-    fr.onload=ev=>{
-      try{
-        const data=JSON.parse(ev.target.result);
-        if(!data.allProjects||!data.allProjects.length){
-          toast('⚠️ Archivo inválido');
-          return;
-        }
-
-        const incoming=data.allProjects;
-
-        // Conflictos = proyectos que ya están ABIERTOS (en openCodes), no en el Excel
-        const conflicts=incoming
-          .map(p=>p['Código Proyecto'])
-          .filter(cod=>S.openCodes.includes(cod));
-
-        let replaceConflicts=false;
-        if(conflicts.length>0){
-          replaceConflicts=confirm(
-            `${conflicts.length} proyecto(s) ya están abiertos en este dispositivo:\n${conflicts.join(', ')}\n\n¿Reemplazar sus datos con los del archivo?\n[OK] = Reemplazar  [Cancelar] = Conservar los actuales`
-          );
-        }
-
-        // Agregar códigos a openCodes (sin duplicar) y actualizar allProjects si el proyecto no está en el Excel
-        let added=0, replaced=0;
-        for(const proj of incoming){
-          const cod=proj['Código Proyecto'];
-          const alreadyOpen=S.openCodes.includes(cod);
-
-          if(alreadyOpen && !replaceConflicts) continue; // saltar
-
-          // Si el proyecto no existe en el Excel local, agregarlo
-          if(!S.allProjects.some(p=>p['Código Proyecto']===cod)){
-            S.allProjects.push(proj);
-          }
-
-          // Agregar a openCodes si no está
-          if(!alreadyOpen) S.openCodes.push(cod);
-
-          if(alreadyOpen){ replaced++; } else { added++; }
-        }
-
-        // Merge datos de formulario
-        // Para proyectos con conflicto que el usuario aceptó reemplazar: sobrescribir sus claves
-        // Para proyectos nuevos: solo agregar claves inexistentes
-        const srcRec=data.rec||{}, srcInv=data.inv||{}, srcPh=data.ph||{};
-        const srcFiles=data.files||{}, srcSigs=data.sigs||{};
-
-        const mergeSelective=(target,src,overwriteCodes,extractCod)=>{
-          for(const k in src){
-            const cod=extractCod(k);
-            if(overwriteCodes.includes(cod)||!(k in target)) target[k]=src[k];
-          }
-        };
-        const oc=replaceConflicts?conflicts:[];
-        mergeSelective(S.rec,   srcRec,   oc, k=>k.split('_')[0]);
-        mergeSelective(S.inv,   srcInv,   oc, k=>k.replace(/^inv_/,'').split('_')[0]);
-        mergeSelective(S.ph,    srcPh,    oc, k=>k.replace(/^ph_/,'').split('_')[0]);
-        mergeSelective(S.files, srcFiles, oc, k=>k.replace(/^f_/,'').split('_')[0]);
-        mergeSelective(S.sigs,  srcSigs,  oc, k=>k.replace(/^sig_/,'').split('_')[0]);
-
-        persist();
-        const parts=[];
-        if(added)    parts.push(`${added} nuevo(s)`);
-        if(replaced) parts.push(`${replaced} reemplazado(s)`);
-        toast(`✅ ${parts.join(', ')} proyecto(s) importado(s)`,3000);
-        showPortada();
-      }catch(err){
-        console.error('Import error:',err);
-        toast('⚠️ Error al importar');
-      }
-    };
-    fr.readAsText(file);
-  };
-  inp.click();
-}
-
-/* ── CERRAR APP ── */
-function closeApp(){
-  save();
-  const isStandalone=window.navigator.standalone||window.matchMedia('(display-mode:standalone)').matches;
-  const isMobile=/iphone|ipad|ipod|android/i.test(navigator.userAgent);
-  if(isStandalone&&isMobile){
-    toast('Presione el botón Home del dispositivo para salir',3000);
-  } else if(isStandalone){
-    if(confirm('¿Cerrar la aplicación?')) window.close();
-  } else {
-    goPortada();
-  }
-}
-
-/* ── PWA INSTALL BUTTON ── */
-let _installPrompt = null;
-
-window.addEventListener('beforeinstallprompt', (e) => {
-  e.preventDefault();
-  _installPrompt = e;
-  // Show install button
-  const btn = document.getElementById('btn-install');
-  if (btn) btn.style.display = 'flex';
-});
-
-window.addEventListener('appinstalled', () => {
-  _installPrompt = null;
-  const btn = document.getElementById('btn-install');
-  if (btn) btn.style.display = 'none';
-  toast('✅ Aplicación instalada correctamente', 3000);
-});
-
-function installApp() {
-  if (_installPrompt) {
-    _installPrompt.prompt();
-    _installPrompt.userChoice.then(result => {
-      if (result.outcome === 'accepted') {
-        toast('✅ Instalando...', 2000);
-      }
-      _installPrompt = null;
-      const btn = document.getElementById('btn-install');
-      if (btn) btn.style.display = 'none';
-    });
-  } else {
-    // Fallback instructions for iOS (Safari doesn't support beforeinstallprompt)
-    const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
-    if (ios) {
-      toast('En Safari: Compartir → Añadir a pantalla de inicio', 5000);
-    } else {
-      toast('Busque el botón de instalar en la barra del navegador', 4000);
-    }
-  }
-}
-
-
-/* ── AUTOSAVE on field blur ── */
-document.addEventListener('change', (e) => {
-  if (e.target.matches('[data-f]') || e.target.matches('[data-ik]')) {
-    // Debounce: save 1s after last change
-    clearTimeout(document._saveTimer);
-    document._saveTimer = setTimeout(() => {
-      if (S.openCodes.length) save();
-    }, 1000);
-  }
-});
-
-/* ── UTILS ───────────────────────────────────────── */
-function x(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-function td(){return new Date().toISOString().split('T')[0];}
-function toast(msg,ms=3000){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('on');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('on'),ms);}
-function showL(msg){document.getElementById('ltxt').textContent=msg;document.getElementById('loading').classList.add('on');}
-function hideL(){document.getElementById('loading').classList.remove('on');}
-
-/* ── PRESUPUESTO PARSER — Excel ── */
-function parsePrespuesto(dataURL, fk){
-  try{
-    const b64=dataURL.split(',')[1];
-    const bin=atob(b64);
-    const arr=new Uint8Array(bin.length);
-    for(let i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
-    const wb=XLSX.read(arr,{type:'array'});
-
-    // Procesar cada hoja con su propio umbral 1%
-    let allSignificant=[];
-    const descMap=new Map();
-    let sheetInfo=[];
-
-    wb.SheetNames.forEach(shName=>{
-      const ws=wb.Sheets[shName];
-      const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
-      if(!rows.length)return;
-      const items=extractItemsFromRows(rows);
-      if(!items.length)return;
-
-      // Filtro 1% por hoja independiente
-      const shTotal=items.reduce((s,it)=>s+(it.subtot||0),0);
-      const threshold=shTotal*0.01;
-      const significant=shTotal>0?items.filter(it=>(it.subtot||0)>=threshold):items;
-
-      sheetInfo.push(`${shName}:${items.length}→${significant.length}`);
-
-      // Consolidar duplicados entre hojas
-      for(const it of significant){
-        const key=it.desc.toLowerCase().substring(0,40);
-        if(descMap.has(key)){
-          const ex=allSignificant[descMap.get(key)];
-          ex.cant=String(parseFloat(ex.cant||1)+parseFloat(it.cant||1));
-          ex.subtot=(ex.subtot||0)+(it.subtot||0);
-        } else {
-          descMap.set(key,allSignificant.length);
-          allSignificant.push({...it});
-        }
-      }
-    });
-
-    console.log('[parsePrespuesto] hojas:',sheetInfo.join(', '));
-    if(!allSignificant.length){toast('⚠️ Presupuesto vacío');return;}
-    fillInventoryFromItems(allSignificant, fk, true); // true = ya filtrado
-  }catch(err){
-    console.error('Excel parse error:',err);
-    toast('⚠️ Error al leer el Excel de presupuesto');
-  }
-}
-
-/* ── PRESUPUESTO PARSER — PDF (using pdf.js) ── */
-async function parsePrespuestoPDF(dataURL, fk){
-  showL('📄 Leyendo PDF...');
-  try{
-    const b64=dataURL.split(',')[1];
-    const uint8Array=Uint8Array.from(atob(b64),c=>c.charCodeAt(0));
-    const pdf=await pdfjsLib.getDocument({data:uint8Array}).promise;
-
-    // Recopilar todos los ítems de texto con posición X,Y de todas las páginas
-    const allTextItems=[];
-    let totalItems=0;
-
-    for(let i=1;i<=Math.min(pdf.numPages,100);i++){
-      const page=await pdf.getPage(i);
-      const text=await page.getTextContent();
-      const vp=page.getViewport({scale:1});
-      totalItems+=text.items.length;
-      text.items.forEach(item=>{
-        if(!item.str||!item.str.trim())return;
-        // Normalizar Y a página (invertir eje)
-        const y=Math.round((vp.height-item.transform[5])/5)*5; // agrupar por ~5pt
-        allTextItems.push({x:item.x,y:y+(i-1)*10000,str:item.str.trim(),page:i});
-      });
-    }
-
-    if(totalItems===0){
-      hideL();toast('⚠️ PDF escaneado (sin texto extraíble). Use Excel.',6000);return;
-    }
-
-    // Agrupar por fila (mismo Y)
-    const rowMap=new Map();
-    allTextItems.forEach(it=>{
-      if(!rowMap.has(it.y))rowMap.set(it.y,[]);
-      rowMap.get(it.y).push(it);
-    });
-
-    // Construir filas ordenadas por X
-    const rows=Array.from(rowMap.entries())
-      .sort((a,b)=>a[0]-b[0])
-      .map(([y,its])=>its.sort((a,b)=>a.x-b.x).map(it=>it.str));
-
-    hideL();
-
-    if(!rows.length){toast('⚠️ PDF sin contenido legible.',5000);return;}
-
-    // Para PDF aplicar filtro por hoja no aplica — usar fillInventoryFromItems normal
-    const items=extractItemsFromRows(rows);
-    if(!items.length){toast('⚠️ No se encontraron elementos en el PDF. Verifique el formato.',5000);return;}
-    fillInventoryFromItems(items, fk); // filtro 1% sobre total del PDF
-  }catch(err){
-    console.error('PDF parse error:',err);
-    hideL();
-    toast('⚠️ Error PDF: '+err.message);
-  }
-}
-function extractPDFText(bin){
-  // Extract text from PDF binary by finding text streams
-  const lines=[];
-  const str=bin; // binary string
-  // PDF text is in BT...ET blocks, or in stream blocks
-  // Simple approach: find all readable ASCII sequences >= 4 chars
-  let current='';
-  for(let i=0;i<str.length;i++){
-    const c=str.charCodeAt(i);
-    if(c>=32&&c<=126){
-      current+=str[i];
-    } else {
-      if(current.length>=3){
-        const trimmed=current.trim();
-        if(trimmed.length>=3) lines.push(trimmed);
-      }
-      current='';
-    }
-  }
-  if(current.trim().length>=3) lines.push(current.trim());
-  // Filter: keep only lines that could be budget items
-  // (contain letters and possibly numbers)
-  return lines.filter(l=>/[a-záéíóúñüA-ZÁÉÍÓÚÑÜ]/.test(l)&&l.length>=4);
-}
-
-/* ── CORE: extrae ítems de filas (Excel o PDF) ── */
-function extractItemsFromRows(rows){
-  const toNum=v=>{if(v===''||v===null||v===undefined)return NaN;const n=parseFloat(String(v).replace(/[^0-9.,-]/g,'').replace(',','.'));return isNaN(n)?NaN:n;};
-  const clean=v=>String(v||'').replace(/\s+/g,' ').trim();
-  const isGoodDesc=v=>{
-    if(!v||v.length<3)return false;
-    const lv=v.toLowerCase();
-    const exclude=['total','subtotal','costo unit','cost unit','superficie','precio unit','iva','valor unit','$/h','detalle','presupuesto','item','descripcion','descripción','partida','n°'];
-    if(exclude.some(e=>lv.startsWith(e)))return false;
-    if(/^[0-9.\s]+$/.test(v))return false;
-    return true;
-  };
-
-  // Detectar columnas desde encabezado
-  let descCol=-1,unitCol=-1,cantCol=-1,unitPriceCol=-1,subtotalCol=-1;
-  const descKW=['item','descripcion','descripción','detalle','material','obra','elemento'];
-  const unitKW=['unid','unit','u.','gl','m.','m3','m2','kg'];
-  const cantKW=['cant','cantidad','n°','num'];
-  const priceKW=['valor unit','precio unit','v.unit','p.unit','unit price','precio','valor'];
-  const subtotKW=['subtotal','sub total','parcial','monto','importe','total item','valor total'];
-
-  for(let r=0;r<Math.min(rows.length,20);r++){
-    const row=rows[r]||[];
-    const rowLower=row.map(v=>String(v||'').toLowerCase().trim());
-    let dC=-1,uC=-1,cC=-1,pC=-1,sC=-1;
-    for(let c=0;c<rowLower.length;c++){
-      const v=rowLower[c];
-      if(dC<0&&descKW.some(k=>v.includes(k)))dC=c;
-      else if(uC<0&&unitKW.some(k=>v===k||v.includes(k)&&v.length<8))uC=c;
-      else if(cC<0&&cantKW.some(k=>v.includes(k)))cC=c;
-      else if(pC<0&&priceKW.some(k=>v.includes(k)))pC=c;
-      else if(sC<0&&subtotKW.some(k=>v.includes(k)))sC=c;
-    }
-    if(dC>=0&&(cC>=0||pC>=0||sC>=0)){
-      descCol=dC;unitCol=uC;cantCol=cC;unitPriceCol=pC;subtotalCol=sC;
-      break;
-    }
-  }
-
-  // Fallback: inferir por contenido
-  if(descCol<0){
-    const maxCols=rows.slice(0,50).reduce((m,r)=>Math.max(m,(r||[]).length),0);
-    let bestDescScore=-1;
-    for(let c=0;c<maxCols;c++){
-      let score=0;
-      for(let r=0;r<Math.min(rows.length,50);r++){
-        const v=clean((rows[r]||[])[c]);
-        if(v.length>8&&isNaN(toNum(v)))score+=v.length;
-      }
-      if(score>bestDescScore){bestDescScore=score;descCol=c;}
-    }
-    const numCols=[];
-    for(let c=descCol+1;c<maxCols;c++){
-      let sum=0,cnt=0;
-      for(let r=0;r<Math.min(rows.length,50);r++){
-        const n=toNum((rows[r]||[])[c]);
-        if(!isNaN(n)&&n>0){sum+=n;cnt++;}
-      }
-      if(cnt>2)numCols.push({c,avg:sum/cnt,cnt});
-    }
-    numCols.sort((a,b)=>a.c-b.c);
-    if(numCols.length>=2){
-      const smallCols=numCols.filter(x=>x.avg<10000);
-      const bigCols=numCols.filter(x=>x.avg>=1000);
-      cantCol=smallCols.length>0?smallCols[0].c:-1;
-      subtotalCol=bigCols.length>0?bigCols[bigCols.length-1].c:-1;
-      if(numCols.length>=3)unitPriceCol=numCols[numCols.length-2>0?numCols.length-2:0].c;
-    }
-  }
-
-  // Recopilar ítems válidos
-  const items=[];
-  for(let r=0;r<rows.length;r++){
-    const row=rows[r]||[];
-    const desc=clean(row[descCol]||'');
-    if(!isGoodDesc(desc))continue;
-    const cant=cantCol>=0?toNum(row[cantCol]):NaN;
-    const subtot=subtotalCol>=0?toNum(row[subtotalCol]):NaN;
-    const uprice=unitPriceCol>=0?toNum(row[unitPriceCol]):NaN;
-    const hasNumbers=(!isNaN(subtot)&&subtot>0)||((!isNaN(cant)&&cant>0)&&(!isNaN(uprice)&&uprice>0));
-    if(!hasNumbers)continue;
-    const unit=unitCol>=0?clean(row[unitCol]||''):'';
-    const cantStr=!isNaN(cant)&&cant>0?String(cant):'1';
-    items.push({desc,unit,cant:cantStr,subtot:isNaN(subtot)?(!isNaN(cant)&&!isNaN(uprice)?cant*uprice:0):subtot});
-  }
-  return items;
-}
-
-/* ── CORE: consolida, filtra y guarda en inventario ── */
-function fillInventoryFromItems(items, fk, alreadyFiltered=false){
-  // Consolidar duplicados (misma desc ~40 chars) sumando cantidades y subtotales
-  const consolidated=[];
-  const descMap=new Map();
-  for(const it of items){
-    const key=it.desc.toLowerCase().substring(0,40);
-    if(descMap.has(key)){
-      const ex=consolidated[descMap.get(key)];
-      ex.cant=String(parseFloat(ex.cant||1)+parseFloat(it.cant||1));
-      ex.subtot=(ex.subtot||0)+(it.subtot||0);
-    } else {
-      descMap.set(key,consolidated.length);
-      consolidated.push({...it});
-    }
-  }
-
-  // Filtrar >= 1% del total (solo si no viene ya filtrado por hoja)
-  let significant=consolidated;
-  if(!alreadyFiltered){
-    const grandTotal=consolidated.reduce((s,it)=>s+(it.subtot||0),0);
-    const threshold=grandTotal*0.01;
-    significant=grandTotal>0?consolidated.filter(it=>(it.subtot||0)>=threshold):consolidated;
-  }
-
-  if(!significant.length){
-    toast('⚠️ No se encontraron elementos significativos en el presupuesto.');
-    return;
-  }
-
-  // Construir newItems según tipo proyecto
-  const cod=S.openCodes[S.ci]||'';
-  if(!cod){toast('⚠️ No se pudo identificar el proyecto');return;}
-  const p=S.allProjects.find(r=>r['Código Proyecto']===cod);
-  const isT=p?String(p['Tipo Obra']||'').toLowerCase().includes('tecnif'):true;
-  const ik=`inv_${cod}_datos`;
-
-  const newItems=significant.map(it=>{
-    if(isT){return {elem:it.desc.substring(0,80),mod:'',marc:'',cant:it.cant,ser:''};}
-    else{return {cant:it.cant,tipo:it.desc.substring(0,80),dim:it.unit?`Unidad: ${it.unit}`:'',coo:'',obs:''};}
+async function ghRequest(path,method,body){
+  const url=`https://api.github.com/repos/${GH_REPO}/contents/${path}`;
+  const res=await fetch(url,{
+    method,
+    headers:{'Authorization':`token ${ghToken()}`,'Content-Type':'application/json','Accept':'application/vnd.github.v3+json'},
+    body:body?JSON.stringify(body):undefined
   });
-
-  // Merge o reemplazar
-  const existing=S.inv[ik]||[];
-  const isEmpty=existing.length===0||(existing.length===1&&!existing[0].elem&&!existing[0].tipo&&!existing[0].mod&&!existing[0].cant);
-
-  const doLoad=()=>{
-    S.inv[ik]=newItems;persist();renderCurrent();
-    toast(`✅ ${newItems.length} elementos cargados (≥1% del presupuesto)`,4000);
-  };
-
-  if(!isEmpty){
-    const fmod=document.getElementById('file-modal');
-    document.getElementById('fmod-title').textContent='Inventario existente';
-    document.getElementById('fmod-name').textContent=`Se encontraron ${newItems.length} elementos en el presupuesto. ¿Reemplazar el inventario actual?`;
-    document.getElementById('fmod-ver').style.display='none';
-    document.getElementById('fmod-del').style.display='none';
-    const repBtn=document.getElementById('fmod-rep');
-    repBtn.textContent='✅ Sí, reemplazar';
-    repBtn.onclick=()=>{closeFileModal();repBtn.textContent='🔄 Reemplazar';document.getElementById('fmod-ver').style.display='';document.getElementById('fmod-del').style.display='';doLoad();};
-    document.getElementById('fmod-cls').textContent='Cancelar';
-    document.getElementById('fmod-cls').onclick=()=>{
-      closeFileModal();document.getElementById('fmod-cls').textContent='Cerrar';
-      document.getElementById('fmod-ver').style.display='';document.getElementById('fmod-del').style.display='';
-      repBtn.textContent='🔄 Reemplazar';
-    };
-    fmod.style.display='flex';
-  } else {
-    doLoad();
-  }
+  return res;
 }
 
-// Legacy wrapper — mantener compatibilidad si algo lo llama directamente
-function extractAndFillInventory(rows, fk){
-  fillInventoryFromItems(extractItemsFromRows(rows), fk);
-}
 /* ── EXPORTAR / IMPORTAR JSON (sincronización entre dispositivos) ── */
 function exportJSON(){
   save(); // save any pending form data first
