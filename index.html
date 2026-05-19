@@ -2405,7 +2405,8 @@ async function syncSubir(){
   st.textContent='Subiendo...';
   try{
     const payload={version:2,exported:new Date().toISOString(),supervisor:sup,allProjects:S.allProjects,openCodes:S.openCodes,rec:S.rec,inv:S.inv,ph:S.ph,files:S.files,sigs:S.sigs,visitas:S.visitas};
-    const content=btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+    const json=JSON.stringify(payload);
+    const content=btoa(encodeURIComponent(json).replace(/%([0-9A-F]{2})/g,(_,p1)=>String.fromCharCode(parseInt(p1,16))));
     const filePath=ghDataPath(sup);
     const getRes=await ghRequest(filePath,'GET');
     let sha=undefined;
@@ -2436,7 +2437,7 @@ async function syncBajar(){
     if(res.status===404){st.textContent='No hay datos en la nube aún';toast('⚠️ No hay datos guardados para '+sup);return;}
     if(res.status!==200){st.textContent='❌ Error '+res.status;toast('❌ Error '+res.status);return;}
     const d=await res.json();
-    const payload=JSON.parse(decodeURIComponent(escape(atob(d.content.replace(/\n/g,'')))));
+    const payload=JSON.parse(decodeURIComponent(atob(d.content.replace(/[\s\r\n]/g,''))));
     if(payload.allProjects)S.allProjects=payload.allProjects;
     if(payload.openCodes)S.openCodes=payload.openCodes;
     const mo=(t,s)=>{for(const k in s)t[k]=s[k];};
