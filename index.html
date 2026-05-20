@@ -1343,7 +1343,7 @@ function refreshPG(pk,cols,max,m){
 
 /* ── FIRMA ───────────────────────────────────────── */
 function bFirma(rec,rk){
-  const sv=rec['_sup']||'';
+  const sv=rec['_sup']||localStorage.getItem('cnr_sup')||'';
   const opts=`<option value="">— Seleccionar supervisor —</option>`+SUPS.map(s=>`<option value="${s}" ${s===sv?'selected':''}>${s}</option>`).join('');
   return `<div class="firma-wrap">
     <canvas class="sig-c" id="sig-${rk}" width="500" height="110"></canvas>
@@ -2459,6 +2459,7 @@ async function syncBajar(sel,st){
       st.textContent='Descargando archivo grande...';
       payload=await (await fetch(d.download_url+'?t='+Date.now())).json();
     } else {st.textContent='❌ Archivo vacío';return;}
+    if(payload.supervisor)localStorage.setItem('cnr_sup',payload.supervisor);
     // Merge aditivo: agrega proyectos nuevos, no borra los existentes
     if(payload.allProjects){
       for(const p of payload.allProjects){
