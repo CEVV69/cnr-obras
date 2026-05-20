@@ -506,18 +506,18 @@ body{background:#b8bec8}
 
       <!-- SYNC BUTTONS -->
       <div class="sync-row">
-        <button class="sync-btn export" onclick="exportProject()">
-          <span class="sb-icon">💾</span>
+        <button class="sync-btn export" onclick="openSyncModal('subir')">
+          <span class="sb-icon">☁️</span>
           <span class="sb-text">
-            <div class="sb-title">Exportar proyecto</div>
-            <div class="sb-sub">Guardar proyecto actual</div>
+            <div class="sb-title">Subir a la nube</div>
+            <div class="sb-sub">Guardar mis datos en GitHub</div>
           </span>
         </button>
-        <button class="sync-btn import" onclick="importProject()">
-          <span class="sb-icon">📂</span>
+        <button class="sync-btn import" onclick="openSyncModal('bajar')">
+          <span class="sb-icon">⬇️</span>
           <span class="sb-text">
-            <div class="sb-title">Importar proyecto</div>
-            <div class="sb-sub">Cargar proyecto desde archivo</div>
+            <div class="sb-title">Descargar de la nube</div>
+            <div class="sb-sub">Cargar mis datos desde GitHub</div>
           </span>
         </button>
       </div>
@@ -2412,17 +2412,31 @@ async function syncSubir(sel,st){
   if(!sup){toast('⚠️ Elige un supervisor primero');return;}
   st.textContent='Subiendo...';
   try{
-    const payload={version:2,exported:new Date().toISOString(),supervisor:sup,allProjects:S.allProjects,openCodes:S.openCodes,rec:S.rec,inv:S.inv,ph:S.ph,files:S.files,sigs:S.sigs,visitas:S.visitas};
+    // Subir TODOS los datos de la app para este supervisor
+    // (cada supervisor sube su propio archivo independiente)
+    const payload={
+      version:2,exported:new Date().toISOString(),supervisor:sup,
+      allProjects:S.allProjects,openCodes:S.openCodes,
+      rec:S.rec,inv:S.inv,ph:S.ph,files:S.files,sigs:S.sigs,visitas:S.visitas
+    };
     const json=JSON.stringify(payload);
     const content=btoa(encodeURIComponent(json).replace(/%([0-9A-F]{2})/g,(_,p1)=>String.fromCharCode(parseInt(p1,16))));
     const filePath=ghDataPath(sup);
+    // Obtener SHA del archivo actual (si existe) para poder actualizarlo
     const getRes=await ghRequest(filePath,'GET');
-    let sha;if(getRes.status===200){const d=await getRes.json();sha=d.sha;}
-    const putRes=await ghRequest(filePath,'PUT',{message:`Sync ${sup}`,content,branch:GH_BRANCH,...(sha?{sha}:{})});
+    let sha;
+    if(getRes.status===200){const d=await getRes.json();sha=d.sha;}
+    // Subir — si hay SHA actualiza, si no crea nuevo
+    const putRes=await ghRequest(filePath,'PUT',{
+      message:`Sync ${sup} ${new Date().toLocaleString('es-CL')}`,
+      content,branch:GH_BRANCH,...(sha?{sha}:{})
+    });
     if(putRes.status===200||putRes.status===201){
-      st.textContent=`✅ Subido: ${new Date().toLocaleTimeString('es-CL')}`;toast('☁️ Datos subidos',3000);
+      st.textContent=`✅ Subido: ${new Date().toLocaleTimeString('es-CL')}`;
+      toast('☁️ Datos subidos',3000);
     } else {
-      const err=await putRes.json();st.textContent='❌ Error';toast('❌ '+(err.message||putRes.status));
+      const err=await putRes.json();
+      st.textContent='❌ Error';toast('❌ '+(err.message||putRes.status));
     }
   }catch(e){st.textContent='❌ Sin conexión';toast('❌ Sin conexión');}
 }
@@ -2445,8 +2459,18 @@ async function syncBajar(sel,st){
       st.textContent='Descargando archivo grande...';
       payload=await (await fetch(d.download_url+'?t='+Date.now())).json();
     } else {st.textContent='❌ Archivo vacío';return;}
-    if(payload.allProjects)S.allProjects=payload.allProjects;
-    if(payload.openCodes)S.openCodes=payload.openCodes;
+    // Merge aditivo: agrega proyectos nuevos, no borra los existentes
+    if(payload.allProjects){
+      for(const p of payload.allProjects){
+        if(!S.allProjects.some(e=>e['Código Proyecto']===p['Código Proyecto']))
+          S.allProjects.push(p);
+      }
+    }
+    if(payload.openCodes){
+      for(const cod of payload.openCodes){
+        if(!S.openCodes.includes(cod))S.openCodes.push(cod);
+      }
+    }
     const mo=(t,s)=>{for(const k in s)t[k]=s[k];};
     mo(S.rec,payload.rec||{});mo(S.inv,payload.inv||{});mo(S.ph,payload.ph||{});
     mo(S.files,payload.files||{});mo(S.sigs,payload.sigs||{});mo(S.visitas,payload.visitas||{});
