@@ -1802,31 +1802,29 @@ function buildPDFHTML(p,m,rec,isT,items,photos,sig){
     ?`<div class="sig"><img src="${sig}" alt="Firma"><div class="sig-ln"></div><div class="sig-nm">${supName}</div><div class="sig-cg">Supervisor Técnico de Obras<br>CNR Ñuble</div></div>`
     :`<div class="sig"><div class="sig-ln"></div><div class="sig-nm">${supName}</div><div class="sig-cg">Supervisor Técnico de Obras<br>CNR Ñuble</div></div>`;
 
-  // ── INVENTARIO paginado (máx 20 ítems por página, encabezado repetido) ──
-  const INV_PER_PAGE=20;
+  // ── INVENTARIO paginado (máx 25 ítems pág 1, encabezado repetido) ──
+  const INV_PER_PAGE=25;
   const theadT=`<thead><tr><th class="nc">N°</th><th>Elemento</th><th>Modelo</th><th>Marca</th><th class="ca">Cant.</th><th class="se">N° Serie</th></tr></thead>`;
   const theadC=`<thead><tr><th class="nc">N°</th><th class="ca">Cant.</th><th>Tipo Obra</th><th>Dimensiones relevantes</th><th>Coordenadas inicio y fin</th><th>Obs. técnicas</th></tr></thead>`;
   const makeInvRow=(it,i)=>isT
     ?`<tr><td class="nc">${i+1}</td><td>${x(it.elem||'')}</td><td>${x(it.mod||'')}</td><td>${x(it.marc||'')}</td><td class="ca">${x(it.cant||'')}</td><td class="se">${x(it.ser||'')}</td></tr>`
     :`<tr><td class="nc">${i+1}</td><td class="ca">${x(it.cant||'')}</td><td>${x(it.tipo||'')}</td><td>${x(it.dim||'')}</td><td>${x(it.coo||'')}</td><td>${x(it.obs||'')}</td></tr>`;
   const thead=isT?theadT:theadC;
-  let invTable='';
-  if(items.length<=INV_PER_PAGE){
-    // Cabe en una página
-    const rows=items.map((it,i)=>makeInvRow(it,i)).join('');
-    invTable=`<table class="inv">${thead}<tbody>${rows}</tbody></table>`;
-  } else {
-    // Múltiples páginas con encabezado repetido
-    const chunks=[];
-    for(let i=0;i<items.length;i+=INV_PER_PAGE) chunks.push(items.slice(i,i+INV_PER_PAGE));
-    invTable=chunks.map((chunk,ci)=>{
-      const rows=chunk.map((it,j)=>makeInvRow(it,ci*INV_PER_PAGE+j)).join('');
-      const isLast=ci===chunks.length-1;
-      // Primera chunk va inline en la página 1; las demás en página nueva
-      if(ci===0) return `<table class="inv">${thead}<tbody>${rows}</tbody></table>`;
-      return `<div class="page"><table class="inv">${thead}<tbody>${rows}</tbody></table></div>`;
-    }).join('');
-  }
+
+  // invTable1: primera página (va dentro de la página principal)
+  // invPagesExtra: páginas adicionales (van fuera, antes de fotos)
+  const firstChunk=items.slice(0,INV_PER_PAGE);
+  const extraChunks=[];
+  for(let i=INV_PER_PAGE;i<items.length;i+=INV_PER_PAGE)
+    extraChunks.push(items.slice(i,i+INV_PER_PAGE));
+
+  const invTable1=`<table class="inv">${thead}<tbody>${firstChunk.map((it,i)=>makeInvRow(it,i)).join('')}</tbody></table>`;
+
+  let invExtraPages='';
+  extraChunks.forEach((chunk,ci)=>{
+    const rows=chunk.map((it,j)=>makeInvRow(it,INV_PER_PAGE+ci*INV_PER_PAGE+j)).join('');
+    invExtraPages+=`<div class="page"><table class="inv">${thead}<tbody>${rows}</tbody></table></div>`;
+  });
 
   // ── PÁGINAS DE FOTOS (sin logo, firma al final de la última) ─────
   let fotoPages='';
@@ -1847,8 +1845,10 @@ function buildPDFHTML(p,m,rec,isT,items,photos,sig){
     });
   }
 
-  // Si no hay fotos, la firma va en la página 1
-  const sigPag1=photos.length===0?sigBlock:'';
+  // Si no hay fotos ni páginas extra, la firma va en la página 1
+  const sigPag1=photos.length===0&&extraChunks.length===0?sigBlock:'';
+  // Si hay páginas extra pero no fotos, la firma va en la última página extra
+  const sigLastInv=extraChunks.length>0&&photos.length===0?sigBlock:'';
 
   const docOpen=`<!DOCTYPE html><html><head><meta charset="UTF-8"><style>${css}</style></head><body>`;
   const docClose=`</body></html>`;
@@ -1868,10 +1868,11 @@ function buildPDFHTML(p,m,rec,isT,items,photos,sig){
           <div class="sec sec-id">1.- IDENTIFICACIÓN:</div>
           ${idT()}
           <div class="sec sec-inv">2.- INVENTARIO DE EQUIPOS Y ELEMENTOS:</div>
-          ${invTable}
+          ${invTable1}
           ${obsBlock}
           ${sigPag1}
         </div>
+        ${invExtraPages.length?invExtraPages.replace(/<\/div>\s*$/,`${sigLastInv}</div>`):''}
         ${fotoPages}
       `+docClose;
     }
@@ -1949,24 +1950,18 @@ function buildPDFHTML(p,m,rec,isT,items,photos,sig){
         </tr>
       </table>`;
 
-    // Inventario OC — columnas exactas del PDF oficial: N° | Cant. | Tipo de obra | Dimensiones | Coordenadas | Obs.técnicas
+    // Inventario OC — columnas exactas del PDF oficial
+    const colgrpOC=`<colgroup><col style="width:24px"><col style="width:36px"><col style="width:18%"><col style="width:22%"><col style="width:22%"><col></colgroup>`;
+    const theadOC=`<thead><tr><th class="nc">N°</th><th class="ca">Cant.</th><th>Tipo de obra</th><th style="text-align:center">Dimensiones<br>relevantes</th><th style="text-align:center">Coordenadas inicio y<br>fin de obra</th><th style="text-align:center">Observaciones técnicas<br>(Materiales, otros)</th></tr></thead>`;
     const invOC=`
       <div class="sec" style="margin:24px 0 6px;text-transform:uppercase;font-weight:700;font-size:11.5px">2.- INVENTARIO (registrar coordenadas en los casos que corresponda)</div>
-      <table class="inv" style="table-layout:fixed;width:100%">
-        <colgroup>
-          <col style="width:24px"><col style="width:36px"><col style="width:18%">
-          <col style="width:22%"><col style="width:22%"><col>
-        </colgroup>
-        <thead><tr>
-          <th class="nc">N°</th>
-          <th class="ca">Cant.</th>
-          <th>Tipo de obra</th>
-          <th style="text-align:center">Dimensiones<br>relevantes</th>
-          <th style="text-align:center">Coordenadas inicio y<br>fin de obra</th>
-          <th style="text-align:center">Observaciones técnicas<br>(Materiales, otros)</th>
-        </tr></thead>
-        <tbody>${invRows}</tbody>
-      </table>`;
+      <table class="inv" style="table-layout:fixed;width:100%">${colgrpOC}${theadOC}<tbody>${firstChunk.map((it,i)=>makeInvRow(it,i)).join('')}</tbody></table>`;
+
+    let invExtraPagesOC='';
+    extraChunks.forEach((chunk,ci)=>{
+      const rows=chunk.map((it,j)=>makeInvRow(it,INV_PER_PAGE+ci*INV_PER_PAGE+j)).join('');
+      invExtraPagesOC+=`<div class="page"><table class="inv" style="table-layout:fixed;width:100%">${colgrpOC}${theadOC}<tbody>${rows}</tbody></table></div>`;
+    });
 
     // Observaciones — solo si hay contenido, sin bordes, etiqueta en negrita
     const obsOC=rec['_obs']?`
@@ -1995,7 +1990,8 @@ function buildPDFHTML(p,m,rec,isT,items,photos,sig){
         </div>`;
       });
     }
-    const sigPag1OC=photos.length===0?sigBlock:'';
+    const sigPag1OC=photos.length===0&&extraChunks.length===0?sigBlock:'';
+    const sigLastInvOC=extraChunks.length>0&&photos.length===0?sigBlock:'';
 
     return docOpen+`
       <div class="${pg1cls}">
@@ -2006,6 +2002,7 @@ function buildPDFHTML(p,m,rec,isT,items,photos,sig){
         ${obsOC}
         ${sigPag1OC}
       </div>
+      ${invExtraPagesOC.replace(/<\/div>$/,`${sigLastInvOC}</div>`)}
       ${fotoPagesOC}
     `+docClose;
   }
