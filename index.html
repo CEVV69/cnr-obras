@@ -1802,16 +1802,31 @@ function buildPDFHTML(p,m,rec,isT,items,photos,sig){
     ?`<div class="sig"><img src="${sig}" alt="Firma"><div class="sig-ln"></div><div class="sig-nm">${supName}</div><div class="sig-cg">Supervisor Técnico de Obras<br>CNR Ñuble</div></div>`
     :`<div class="sig"><div class="sig-ln"></div><div class="sig-nm">${supName}</div><div class="sig-cg">Supervisor Técnico de Obras<br>CNR Ñuble</div></div>`;
 
-  // ── INVENTARIO ───────────────────────────────────────────────────
-  let invRows='';
-  if(isT){
-    invRows=items.map((it,i)=>`<tr><td class="nc">${i+1}</td><td>${x(it.elem||'')}</td><td>${x(it.mod||'')}</td><td>${x(it.marc||'')}</td><td class="ca">${x(it.cant||'')}</td><td class="se">${x(it.ser||'')}</td></tr>`).join('');
+  // ── INVENTARIO paginado (máx 20 ítems por página, encabezado repetido) ──
+  const INV_PER_PAGE=20;
+  const theadT=`<thead><tr><th class="nc">N°</th><th>Elemento</th><th>Modelo</th><th>Marca</th><th class="ca">Cant.</th><th class="se">N° Serie</th></tr></thead>`;
+  const theadC=`<thead><tr><th class="nc">N°</th><th class="ca">Cant.</th><th>Tipo Obra</th><th>Dimensiones relevantes</th><th>Coordenadas inicio y fin</th><th>Obs. técnicas</th></tr></thead>`;
+  const makeInvRow=(it,i)=>isT
+    ?`<tr><td class="nc">${i+1}</td><td>${x(it.elem||'')}</td><td>${x(it.mod||'')}</td><td>${x(it.marc||'')}</td><td class="ca">${x(it.cant||'')}</td><td class="se">${x(it.ser||'')}</td></tr>`
+    :`<tr><td class="nc">${i+1}</td><td class="ca">${x(it.cant||'')}</td><td>${x(it.tipo||'')}</td><td>${x(it.dim||'')}</td><td>${x(it.coo||'')}</td><td>${x(it.obs||'')}</td></tr>`;
+  const thead=isT?theadT:theadC;
+  let invTable='';
+  if(items.length<=INV_PER_PAGE){
+    // Cabe en una página
+    const rows=items.map((it,i)=>makeInvRow(it,i)).join('');
+    invTable=`<table class="inv">${thead}<tbody>${rows}</tbody></table>`;
   } else {
-    invRows=items.map((it,i)=>`<tr><td class="nc">${i+1}</td><td class="ca">${x(it.cant||'')}</td><td>${x(it.tipo||'')}</td><td>${x(it.dim||'')}</td><td>${x(it.coo||'')}</td><td>${x(it.obs||'')}</td></tr>`).join('');
+    // Múltiples páginas con encabezado repetido
+    const chunks=[];
+    for(let i=0;i<items.length;i+=INV_PER_PAGE) chunks.push(items.slice(i,i+INV_PER_PAGE));
+    invTable=chunks.map((chunk,ci)=>{
+      const rows=chunk.map((it,j)=>makeInvRow(it,ci*INV_PER_PAGE+j)).join('');
+      const isLast=ci===chunks.length-1;
+      // Primera chunk va inline en la página 1; las demás en página nueva
+      if(ci===0) return `<table class="inv">${thead}<tbody>${rows}</tbody></table>`;
+      return `<div class="page"><table class="inv">${thead}<tbody>${rows}</tbody></table></div>`;
+    }).join('');
   }
-  const invTable=isT
-    ?`<table class="inv"><thead><tr><th class="nc">N°</th><th>Elemento</th><th>Modelo</th><th>Marca</th><th class="ca">Cant.</th><th class="se">N° Serie</th></tr></thead><tbody>${invRows}</tbody></table>`
-    :`<table class="inv"><thead><tr><th class="nc">N°</th><th class="ca">Cant.</th><th>Tipo Obra</th><th>Dimensiones relevantes</th><th>Coordenadas inicio y fin</th><th>Obs. técnicas</th></tr></thead><tbody>${invRows}</tbody></table>`;
 
   // ── PÁGINAS DE FOTOS (sin logo, firma al final de la última) ─────
   let fotoPages='';
@@ -2198,7 +2213,8 @@ function doPDF(print){
     const dComp={...d,photos:compressed};
     const html=buildPDFHTML(dComp.p,dComp.m,dComp.rec,dComp.isT,dComp.items,dComp.photos,dComp.sig);
     const viLabel=d.m==='visita'?`_V${(d.vi||0)+1}`:'';
-    const fname=`Acta_${d.cod}_${ML[d.m].replace(/ /g,'_')}${viLabel}.pdf`;
+    const mLabel={inicio:'Acta_Inicio',visita:'Acta_Supervision',recepcion:'Acta_Inventario'};
+  const fname=`${d.cod}_${mLabel[d.m]||d.m}${viLabel}.pdf`;
     // iOS Safari necesita scale más bajo
     const isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent);
     const scale=isIOS?1:1.5;
@@ -2233,7 +2249,8 @@ function doEmail(){
   save();
   const d=getPDFData();if(!d){toast('Abra un proyecto');return;}
   const htmlContent=buildPDFHTML(d.p,d.m,d.rec,d.isT,d.items,d.photos,d.sig);
-  const fname=`Acta_${d.cod}_${ML[d.m].replace(/ /g,'_')}.pdf`;
+  const mLabel2={inicio:'Acta_Inicio',visita:'Acta_Supervision',recepcion:'Acta_Inventario'};
+  const fname=`${d.cod}_${mLabel2[d.m]||d.m}.pdf`;
   const opt={margin:0,filename:fname,image:{type:'jpeg',quality:0.98},html2canvas:{scale:2,useCORS:true},jsPDF:{orientation:'portrait',unit:'mm',format:'letter'}};
   html2pdf().set(opt).from(htmlContent).output('blob').then(pdf=>{
     const url=URL.createObjectURL(pdf);
