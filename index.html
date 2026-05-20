@@ -1823,7 +1823,9 @@ function buildPDFHTML(p,m,rec,isT,items,photos,sig){
   let invExtraPages='';
   extraChunks.forEach((chunk,ci)=>{
     const rows=chunk.map((it,j)=>makeInvRow(it,INV_PER_PAGE+ci*INV_PER_PAGE+j)).join('');
-    invExtraPages+=`<div class="page"><table class="inv">${thead}<tbody>${rows}</tbody></table></div>`;
+    const isLastChunk=ci===extraChunks.length-1;
+    const cls=(!isLastChunk||photos.length)?'page':'page-last';
+    invExtraPages+=`<div class="${cls}"><table class="inv">${thead}<tbody>${rows}</tbody></table></div>`;
   });
 
   // ── PÁGINAS DE FOTOS (sin logo, firma al final de la última) ─────
@@ -1855,7 +1857,7 @@ function buildPDFHTML(p,m,rec,isT,items,photos,sig){
 
   // ══ RECEPCIÓN ════════════════════════════════════════════════════
   if(m==='recepcion'){
-    const pg1cls=photos.length?'page':'page-last';
+    const pg1cls=extraChunks.length>0?'page-last':(photos.length?'page':'page-last');
 
     // ── TECNIFICACIÓN ──────────────────────────────────────────────
     if(isT){
@@ -1960,7 +1962,9 @@ function buildPDFHTML(p,m,rec,isT,items,photos,sig){
     let invExtraPagesOC='';
     extraChunks.forEach((chunk,ci)=>{
       const rows=chunk.map((it,j)=>makeInvRow(it,INV_PER_PAGE+ci*INV_PER_PAGE+j)).join('');
-      invExtraPagesOC+=`<div class="page"><table class="inv" style="table-layout:fixed;width:100%">${colgrpOC}${theadOC}<tbody>${rows}</tbody></table></div>`;
+      const isLastChunk=ci===extraChunks.length-1;
+      const cls=(!isLastChunk||photos.length)?'page':'page-last';
+      invExtraPagesOC+=`<div class="${cls}"><table class="inv" style="table-layout:fixed;width:100%">${colgrpOC}${theadOC}<tbody>${rows}</tbody></table></div>`;
     });
 
     // Observaciones — solo si hay contenido, sin bordes, etiqueta en negrita
@@ -2077,7 +2081,7 @@ function buildPDFHTML(p,m,rec,isT,items,photos,sig){
         <div>${x(rec['_comp'])}</div>
       </div>`:'';
 
-    const pg1cls=photos.length?'page':'page-last';
+    const pg1cls=extraChunks.length>0?'page-last':(photos.length?'page':'page-last');
     return docOpen+`
       <div class="${pg1cls}" style="padding-top:11mm">
         ${hdr('ACTA DE VISITA INICIO DE OBRAS',`CONCURSO ${concurso}, LEY 18.450`)}
